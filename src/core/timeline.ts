@@ -92,6 +92,16 @@ export function stepBackward(timeline: Timeline): Timeline {
 	return pauseAt(timeline, stepStartOf(timeline, previousStepIndex));
 }
 
+/** Va au début de l'étape demandée et met en pause. */
+export function goToStep(timeline: Timeline, stepIndex: number): Timeline {
+	const isExistingStep =
+		Number.isInteger(stepIndex) &&
+		stepIndex >= 0 &&
+		stepIndex < timeline.stepDurationsInMs.length;
+	if (!isExistingStep) throw new Error(`No step at index ${stepIndex}`);
+	return pauseAt(timeline, stepStartOf(timeline, stepIndex));
+}
+
 export function restart(timeline: Timeline): Timeline {
 	return { ...timeline, elapsedInMs: 0 };
 }

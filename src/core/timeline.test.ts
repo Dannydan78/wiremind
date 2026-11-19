@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	advance,
 	createTimeline,
+	goToStep,
 	isFinished,
 	pause,
 	play,
@@ -140,6 +141,29 @@ describe("stepBackward", () => {
 		const timeline = stepBackward(createTimeline(THREE_ONE_SECOND_STEPS));
 
 		expect(positionOf(timeline)).toEqual({ stepIndex: 0, progress: 0 });
+	});
+});
+
+describe("goToStep", () => {
+	test("va au début de l'étape demandée et met en pause", () => {
+		const timeline = goToStep(playingTimeline(), 2);
+
+		expect(timeline.playback).toBe("paused");
+		expect(positionOf(timeline)).toEqual({ stepIndex: 2, progress: 0 });
+	});
+
+	test("peut revenir en arrière", () => {
+		const timeline = goToStep(advance(playingTimeline(), 2500), 0);
+
+		expect(positionOf(timeline)).toEqual({ stepIndex: 0, progress: 0 });
+	});
+
+	test("refuse une étape qui n'existe pas", () => {
+		const timeline = createTimeline(THREE_ONE_SECOND_STEPS);
+
+		expect(() => goToStep(timeline, 3)).toThrow();
+		expect(() => goToStep(timeline, -1)).toThrow();
+		expect(() => goToStep(timeline, 1.5)).toThrow();
 	});
 });
 
