@@ -1,0 +1,26 @@
+package.json
+  s_7191ab7235bb49::t_7e36119e0515f6 2-26
+biome.json
+  s_7191ab7235bb49::t_7e36119e0515f6 2-56
+  s_7191ab7235bb49::t_bd3fa3515f89f2 1,57
+tsconfig.json
+  s_7191ab7235bb49::t_7e36119e0515f6 2-10,12-16,18-23,25-29
+bun.lock
+  s_7191ab7235bb49::t_785216c5f0e073 12,22-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fade2bcb37eb631f6c0e5b746718273f7613914a",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
