@@ -1,0 +1,33 @@
+src/core/packet.ts
+  s_7191ab7235bb49::t_cc29dafa9c8439 1-16,25-26,29-31,52-58,63-70,76-89,91-92
+  s_7191ab7235bb49::t_f4fd670f361c0c 17-24,27-28,32-51,59-62
+  s_7191ab7235bb49::t_64c4deea22b9e1 71-75
+  s_7191ab7235bb49::t_5a09fa3db04e0a 90
+src/core/topology.test.ts
+  s_7191ab7235bb49::t_ee03b17c115e7e 1-126
+src/core/scenario.test.ts
+  s_7191ab7235bb49::t_81d1e58f029c49 61-69,76-78
+  s_7191ab7235bb49::t_b3e132c268fc24 1-60,70-75,79-112,116-185
+  s_7191ab7235bb49::t_902d979fe81111 113-115
+src/core/topology.ts
+  s_7191ab7235bb49::t_d31cd5e2ebbc9a 1-114
+src/core/scenario.ts
+  s_7191ab7235bb49::t_902d979fe81111 7-11
+  s_7191ab7235bb49::t_ee15969550f3aa 1-6,12-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4228a07fd94b348a2f478f050039786906e34df",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
