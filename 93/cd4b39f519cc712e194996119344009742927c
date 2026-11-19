@@ -1,0 +1,20 @@
+src/main.ts
+  s_7191ab7235bb49::t_7e36119e0515f6 9-14,18-21,25-27,31-32
+  s_7191ab7235bb49::t_82f16f53295ef5 1-8,15-17,22-24,28-30,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93cd4b39f519cc712e194996119344009742927c",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
