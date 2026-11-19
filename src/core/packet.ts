@@ -90,3 +90,53 @@ export type Packet = {
 	/** Le contenu n'est pas modélisé : l'encodeur écrit des octets nuls. */
 	readonly payloadSizeInBytes: number;
 };
+
+/** Résumé d'une ligne, comme la colonne « Info » de Wireshark. */
+export function summarizePacket(packet: Packet): string {
+	const { transport, payloadSizeInBytes } = packet;
+	switch (transport.protocol) {
+		case "tcp":
+			return summarizeTcp(transport, payloadSizeInBytes);
+		case "udp":
+			return `${transport.sourcePort} → ${transport.destinationPort} Len=${payloadSizeInBytes}`;
+		case "icmp":
+			return (
+				ICMP_TYPE_NAMES[transport.type] ??
+				`Type=${transport.type} Code=${transport.code}`
+			);
+		default: {
+			const unhandled: never = transport;
+			throw new Error(`Unhandled transport: ${JSON.stringify(unhandled)}`);
+		}
+	}
+}
+
+/** L'ordre dans lequel Wireshark affiche les flags : [SYN, ACK], [FIN, ACK]… */
+const WIRESHARK_FLAG_ORDER: readonly TcpFlag[] = [
+	"FIN",
+	"SYN",
+	"RST",
+	"PSH",
+	"ACK",
+	"URG",
+];
+
+const ICMP_TYPE_NAMES: Partial<Record<number, string>> = {
+	0: "Echo (ping) reply",
+	3: "Destination unreachable",
+	8: "Echo (ping) request",
+	11: "Time-to-live exceeded",
+};
+
+function summarizeTcp(tcp: TcpSegment, payloadSizeInBytes: number): string {
+	const flags = WIRESHARK_FLAG_ORDER.filter((flag) => tcp.flags.includes(flag));
+	// Le numéro d'acquittement n'a de sens que si le flag ACK est levé.
+	const acknowledgment = tcp.flags.includes("ACK")
+		? ` Ack=${tcp.acknowledgmentNumber}`
+		: "";
+	return (
+		`${tcp.sourcePort} → ${tcp.destinationPort} [${flags.join(", ")}]` +
+		` Seq=${tcp.sequenceNumber}${acknowledgment}` +
+		` Win=${tcp.windowSize} Len=${payloadSizeInBytes}`
+	);
+}
