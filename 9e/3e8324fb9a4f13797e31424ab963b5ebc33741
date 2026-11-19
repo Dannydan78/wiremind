@@ -1,0 +1,22 @@
+src/core/timeline.ts
+  s_7191ab7235bb49::t_deb3958d938936 95-104
+src/core/timeline.test.ts
+  s_7191ab7235bb49::t_42d9bea03d8701 147-169
+  s_7191ab7235bb49::t_a9b4cb84eb5bc7 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e3e8324fb9a4f13797e31424ab963b5ebc33741",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "unknown"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
