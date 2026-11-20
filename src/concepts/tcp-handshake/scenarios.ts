@@ -1,7 +1,8 @@
 /**
  * Handshake TCP entre Kali et Ubuntu, sur le même segment réseau.
- * Toutes les valeurs viennent du labo (capture du 2026-11-19).
- * Le SYN-ACK et l'ACK seront ajoutés à partir de la capture complète.
+ * Toutes les valeurs viennent d'une même connexion capturée dans le labo
+ * le 2026-11-19 ; `scenarios.test.ts` vérifie qu'elles se réencodent
+ * exactement en les octets capturés.
  */
 
 import type { Packet } from "../../core/packet";
@@ -17,6 +18,11 @@ const UBUNTU = {
 	ipv4Address: "192.168.64.3",
 	macAddress: "fe:75:bd:ba:e1:b6",
 };
+
+const KALI_PORT = 33534;
+const SSH_PORT = 22;
+const KALI_INITIAL_SEQUENCE_NUMBER = 2013810038;
+const UBUNTU_INITIAL_SEQUENCE_NUMBER = 2329341421;
 
 const LAB_SEGMENT: Topology = {
 	machines: [
@@ -44,13 +50,18 @@ const LAB_SEGMENT: Topology = {
 	],
 };
 
-const KALI_SYN: Packet = {
-	id: "kali-syn",
-	ethernet: { sourceMac: KALI.macAddress, destinationMac: UBUNTU.macAddress },
+const KALI_TO_UBUNTU_ETHERNET = {
+	sourceMac: KALI.macAddress,
+	destinationMac: UBUNTU.macAddress,
+};
+
+const SYN: Packet = {
+	id: "syn",
+	ethernet: KALI_TO_UBUNTU_ETHERNET,
 	ipv4: {
 		dscp: 46,
 		ecn: 0,
-		identification: 726,
+		identification: 30257,
 		dontFragment: true,
 		ttl: 64,
 		sourceAddress: KALI.ipv4Address,
@@ -58,18 +69,78 @@ const KALI_SYN: Packet = {
 	},
 	transport: {
 		protocol: "tcp",
-		sourcePort: 58228,
-		destinationPort: 22,
-		sequenceNumber: 628307994,
+		sourcePort: KALI_PORT,
+		destinationPort: SSH_PORT,
+		sequenceNumber: KALI_INITIAL_SEQUENCE_NUMBER,
 		acknowledgmentNumber: 0,
 		flags: ["SYN"],
 		windowSize: 64240,
 		options: [
 			{ kind: "mss", maxSegmentSizeInBytes: 1460 },
 			{ kind: "sack-permitted" },
-			{ kind: "timestamps", value: 3174480621, echoReply: 0 },
+			{ kind: "timestamps", value: 74438675, echoReply: 0 },
 			{ kind: "nop" },
 			{ kind: "window-scale", shift: 9 },
+		],
+	},
+	payloadSizeInBytes: 0,
+};
+
+const SYN_ACK: Packet = {
+	id: "syn-ack",
+	ethernet: { sourceMac: UBUNTU.macAddress, destinationMac: KALI.macAddress },
+	ipv4: {
+		dscp: 0,
+		ecn: 0,
+		identification: 0,
+		dontFragment: true,
+		ttl: 64,
+		sourceAddress: UBUNTU.ipv4Address,
+		destinationAddress: KALI.ipv4Address,
+	},
+	transport: {
+		protocol: "tcp",
+		sourcePort: SSH_PORT,
+		destinationPort: KALI_PORT,
+		sequenceNumber: UBUNTU_INITIAL_SEQUENCE_NUMBER,
+		acknowledgmentNumber: KALI_INITIAL_SEQUENCE_NUMBER + 1,
+		flags: ["SYN", "ACK"],
+		windowSize: 65160,
+		options: [
+			{ kind: "mss", maxSegmentSizeInBytes: 1460 },
+			{ kind: "sack-permitted" },
+			{ kind: "timestamps", value: 2623568511, echoReply: 74438675 },
+			{ kind: "nop" },
+			{ kind: "window-scale", shift: 8 },
+		],
+	},
+	payloadSizeInBytes: 0,
+};
+
+const ACK: Packet = {
+	id: "ack",
+	ethernet: KALI_TO_UBUNTU_ETHERNET,
+	ipv4: {
+		dscp: 46,
+		ecn: 0,
+		identification: 30258,
+		dontFragment: true,
+		ttl: 64,
+		sourceAddress: KALI.ipv4Address,
+		destinationAddress: UBUNTU.ipv4Address,
+	},
+	transport: {
+		protocol: "tcp",
+		sourcePort: KALI_PORT,
+		destinationPort: SSH_PORT,
+		sequenceNumber: KALI_INITIAL_SEQUENCE_NUMBER + 1,
+		acknowledgmentNumber: UBUNTU_INITIAL_SEQUENCE_NUMBER + 1,
+		flags: ["ACK"],
+		windowSize: 126,
+		options: [
+			{ kind: "nop" },
+			{ kind: "nop" },
+			{ kind: "timestamps", value: 74438676, echoReply: 2623568511 },
 		],
 	},
 	payloadSizeInBytes: 0,
@@ -80,23 +151,60 @@ export const SSH_HANDSHAKE: Scenario = {
 	title: "Handshake TCP vers SSH",
 	overview:
 		"Kali ouvre une connexion SSH vers Ubuntu. Avant tout échange SSH, " +
-		"TCP établit la connexion en trois paquets : SYN, SYN-ACK, ACK.",
+		"les noyaux des deux machines établissent la connexion TCP en trois " +
+		"paquets : SYN, SYN-ACK, ACK.",
 	topology: LAB_SEGMENT,
 	steps: [
 		{
 			title: "SYN",
 			explanation:
 				"Kali demande l'ouverture d'une connexion vers le port 22 (SSH) " +
-				"d'Ubuntu. Il choisit un port source éphémère (58228) et un numéro " +
-				"de séquence initial aléatoire (628307994). Les deux machines sont " +
-				"sur le même réseau /24 : la trame va directement à l'adresse MAC " +
-				"d'Ubuntu, sans passer par un routeur.",
+				"d'Ubuntu. Il choisit un port source éphémère (33534) et un numéro " +
+				"de séquence initial aléatoire (2013810038). Ses options annoncent " +
+				"ce qu'il sait faire : MSS 1460, SACK, horodatage, facteur " +
+				"d'échelle 9. Les deux machines sont sur le même réseau /24 : la " +
+				"trame va directement à l'adresse MAC d'Ubuntu.",
 			events: [
 				{
 					kind: "transmission",
 					fromMachineId: "kali",
 					toMachineId: "ubuntu",
-					packet: KALI_SYN,
+					packet: SYN,
+				},
+			],
+		},
+		{
+			title: "SYN-ACK",
+			explanation:
+				"sshd écoute sur le port 22 : le noyau d'Ubuntu accepte. En un " +
+				"seul paquet, il acquitte le SYN (ack 2013810039, soit le numéro " +
+				"de Kali + 1) et annonce son propre numéro initial, lui aussi " +
+				"aléatoire (2329341421). Il renvoie l'horodatage de Kali pour lui " +
+				"permettre de mesurer l'aller-retour. C'est ce paquet qui fait " +
+				"afficher « open » à nmap.",
+			events: [
+				{
+					kind: "transmission",
+					fromMachineId: "ubuntu",
+					toMachineId: "kali",
+					packet: SYN_ACK,
+				},
+			],
+		},
+		{
+			title: "ACK",
+			explanation:
+				"Kali acquitte le numéro d'Ubuntu (ack 2329341422, soit son " +
+				"numéro + 1). Chaque côté connaît et a confirmé le numéro de " +
+				"départ de l'autre : la connexion est établie et SSH peut " +
+				"commencer. La fenêtre vaut 126, mais avec le facteur d'échelle " +
+				"9 négocié, elle représente 126 × 512 = 64 512 octets.",
+			events: [
+				{
+					kind: "transmission",
+					fromMachineId: "kali",
+					toMachineId: "ubuntu",
+					packet: ACK,
 				},
 			],
 		},
