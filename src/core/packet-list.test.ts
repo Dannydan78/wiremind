@@ -52,6 +52,7 @@ function snapshotWith(
 		step: { title: "Étape", explanation: "", events: sentTransmissions },
 		packetsInFlight: inFlight,
 		sentTransmissions,
+		tables: [],
 	};
 }
 

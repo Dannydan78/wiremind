@@ -3,7 +3,15 @@
  * Fonction pure : la scène 3D et l'interface dessinent ce résultat.
  */
 
-import type { Scenario, Step, Transmission } from "./scenario";
+import {
+	type Scenario,
+	type Step,
+	type TableDefinition,
+	type TableRow,
+	type Transmission,
+	tableUpdatesOf,
+	transmissionsOf,
+} from "./scenario";
 import type { TimelinePosition } from "./timeline";
 
 /** Temps de traversée d'un câble par un paquet, à vitesse 1. */
@@ -15,6 +23,13 @@ export type PacketInFlight = {
 	readonly progress: number;
 };
 
+export type TableState = {
+	readonly definition: TableDefinition;
+	readonly rows: readonly TableRow[];
+	/** Lignes apparues ou modifiées par rapport à l'étape précédente. */
+	readonly changedRowIndexes: readonly number[];
+};
+
 export type ScenarioSnapshot = {
 	readonly stepIndex: number;
 	readonly step: Step;
@@ -24,6 +39,7 @@ export type ScenarioSnapshot = {
 	 * en vol : ce qu'une capture aurait enregistré jusqu'ici.
 	 */
 	readonly sentTransmissions: readonly Transmission[];
+	readonly tables: readonly TableState[];
 };
 
 /**
@@ -33,7 +49,8 @@ export type ScenarioSnapshot = {
  */
 export function stepDurationsOf(scenario: Scenario): number[] {
 	return scenario.steps.map(
-		(step) => Math.max(step.events.length, 1) * TRANSMISSION_DURATION_IN_MS,
+		(step) =>
+			Math.max(transmissionsOf(step).length, 1) * TRANSMISSION_DURATION_IN_MS,
 	);
 }
 
@@ -41,6 +58,8 @@ export function stepDurationsOf(scenario: Scenario): number[] {
  * Les transmissions d'une étape se suivent : chacune occupe une part égale
  * de l'étape. Un paquet qui traverse le pare-feu fait ainsi Kali → OPNsense
  * puis OPNsense → cible, et non les deux à la fois.
+ *
+ * Une mise à jour de table vaut dès le début de son étape.
  */
 export function snapshotAt(
 	scenario: Scenario,
@@ -50,15 +69,16 @@ export function snapshotAt(
 	if (step === undefined) {
 		throw new Error(`Scenario ${scenario.id} has no step ${stepIndex}`);
 	}
-	const activeIndex = activeTransmissionIndexOf(step.events, progress);
-	const transmission = step.events[activeIndex];
+	const transmissions = transmissionsOf(step);
+	const activeIndex = activeTransmissionIndexOf(transmissions, progress);
+	const transmission = transmissions[activeIndex];
 	const packetsInFlight =
 		transmission === undefined
 			? []
 			: [
 					{
 						transmission,
-						progress: progress * step.events.length - activeIndex,
+						progress: progress * transmissions.length - activeIndex,
 					},
 				];
 	return {
@@ -66,9 +86,12 @@ export function snapshotAt(
 		step,
 		packetsInFlight,
 		sentTransmissions: [
-			...scenario.steps.slice(0, stepIndex).flatMap((done) => done.events),
-			...step.events.slice(0, activeIndex + 1),
+			...scenario.steps.slice(0, stepIndex).flatMap(transmissionsOf),
+			...transmissions.slice(0, activeIndex + 1),
 		],
+		tables: scenario.tables.map((definition) =>
+			tableStateAt(scenario, definition, stepIndex),
+		),
 	};
 }
 
@@ -83,4 +106,36 @@ function activeTransmissionIndexOf(
 		Math.floor(stepProgress * transmissionCount),
 		transmissionCount - 1,
 	);
+}
+
+function tableStateAt(
+	scenario: Scenario,
+	definition: TableDefinition,
+	stepIndex: number,
+): TableState {
+	const rows = rowsAt(scenario, definition, stepIndex);
+	const previousRowKeys = new Set(
+		rowsAt(scenario, definition, stepIndex - 1).map(toRowKey),
+	);
+	const changedRowIndexes = rows.flatMap((row, rowIndex) =>
+		previousRowKeys.has(toRowKey(row)) ? [] : [rowIndex],
+	);
+	return { definition, rows, changedRowIndexes };
+}
+
+/** Le contenu de la table pendant l'étape ; avant la première : initial. */
+function rowsAt(
+	scenario: Scenario,
+	definition: TableDefinition,
+	stepIndex: number,
+): readonly TableRow[] {
+	const latestUpdate = scenario.steps
+		.slice(0, stepIndex + 1)
+		.flatMap(tableUpdatesOf)
+		.findLast((update) => update.tableId === definition.id);
+	return latestUpdate?.rows ?? definition.initialRows;
+}
+
+function toRowKey(row: TableRow): string {
+	return JSON.stringify(row);
 }

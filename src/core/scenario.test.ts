@@ -106,6 +106,7 @@ const HANDSHAKE_START: Scenario = {
 	title: "Handshake TCP",
 	overview: "Kali ouvre une connexion SSH vers la cible.",
 	topology: SAME_SEGMENT,
+	tables: [],
 	steps: [synStep(kaliToTarget("syn", ["SYN"], 0, 0))],
 };
 
@@ -196,5 +197,79 @@ describe("assertValidScenario", () => {
 		};
 
 		expect(() => assertValidScenario(scenario)).not.toThrow();
+	});
+});
+
+describe("assertValidScenario · tables", () => {
+	const KALI_TABLE = {
+		id: "kali-tcp",
+		title: "Kali · connexions TCP",
+		machineId: "kali",
+		columns: ["État", "Locale", "Distante"],
+		initialRows: [],
+	};
+
+	function updateStep(tableId: string, rows: string[][]): Step {
+		return {
+			title: "Mise à jour",
+			explanation: "",
+			events: [{ kind: "table-update", tableId, rows }],
+		};
+	}
+
+	test("accepte une table cohérente et ses mises à jour", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			tables: [KALI_TABLE],
+			steps: [updateStep("kali-tcp", [["SYN-SENT", "a:1", "b:22"]])],
+		};
+
+		expect(() => assertValidScenario(scenario)).not.toThrow();
+	});
+
+	test("refuse une table rattachée à une machine inconnue", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			tables: [{ ...KALI_TABLE, machineId: "router" }],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow("unknown machine");
+	});
+
+	test("refuse une mise à jour d'une table inconnue", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			steps: [updateStep("ghost", [])],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow("unknown table ghost");
+	});
+
+	test("refuse une ligne qui n'a pas autant de cases que de colonnes", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			tables: [KALI_TABLE],
+			steps: [updateStep("kali-tcp", [["SYN-SENT", "a:1"]])],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow("has 3 columns");
+	});
+
+	test("refuse deux mises à jour de la même table dans une étape", () => {
+		const twice: Step = {
+			title: "Deux fois",
+			explanation: "",
+			events: [
+				{ kind: "table-update", tableId: "kali-tcp", rows: [] },
+				{ kind: "table-update", tableId: "kali-tcp", rows: [] },
+			],
+		};
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			tables: [KALI_TABLE],
+			steps: [twice],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow("updated twice");
 	});
 });

@@ -42,6 +42,7 @@ const THROUGH_THE_FIREWALL: Scenario = {
 	title: "Traversée du pare-feu",
 	overview: "Un paquet de Kali traverse OPNsense jusqu'à la cible.",
 	topology: { machines: [], links: [] },
+	tables: [],
 	steps: [
 		{
 			title: "Deux sauts",
@@ -158,5 +159,62 @@ describe("snapshotAt", () => {
 			KALI_TO_FIREWALL,
 			FIREWALL_TO_TARGET,
 		]);
+	});
+});
+
+describe("snapshotAt · tables", () => {
+	const WITH_TABLE: Scenario = {
+		...THROUGH_THE_FIREWALL,
+		tables: [
+			{
+				id: "states",
+				title: "Table d'état",
+				machineId: "firewall",
+				columns: ["Connexion", "État"],
+				initialRows: [["a", "ouverte"]],
+			},
+		],
+		steps: [
+			{ title: "Rien", explanation: "", events: [] },
+			{
+				title: "Ajout",
+				explanation: "",
+				events: [
+					{
+						kind: "table-update",
+						tableId: "states",
+						rows: [
+							["a", "ouverte"],
+							["b", "ouverte"],
+						],
+					},
+				],
+			},
+			{ title: "Après", explanation: "", events: [] },
+		],
+	};
+
+	function tableAt(stepIndex: number) {
+		const [table] = snapshotAt(WITH_TABLE, { stepIndex, progress: 0 }).tables;
+		if (table === undefined) throw new Error("The scenario has one table");
+		return table;
+	}
+
+	test("avant toute mise à jour, la table a ses lignes de départ", () => {
+		expect(tableAt(0).rows).toEqual([["a", "ouverte"]]);
+		expect(tableAt(0).changedRowIndexes).toEqual([]);
+	});
+
+	test("une mise à jour vaut dès le début de son étape et signale la ligne ajoutée", () => {
+		expect(tableAt(1).rows).toEqual([
+			["a", "ouverte"],
+			["b", "ouverte"],
+		]);
+		expect(tableAt(1).changedRowIndexes).toEqual([1]);
+	});
+
+	test("le contenu persiste aux étapes suivantes, sans être signalé à nouveau", () => {
+		expect(tableAt(2).rows).toHaveLength(2);
+		expect(tableAt(2).changedRowIndexes).toEqual([]);
 	});
 });
