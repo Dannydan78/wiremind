@@ -6,6 +6,7 @@
 
 import * as THREE from "three";
 import type { Unmount } from "./concept";
+import { createConnectionView } from "./connection-view";
 import { layOutMachines } from "./layout";
 import { toPacketRows } from "./packet-list";
 import { createPacketView } from "./packet-view";
@@ -49,6 +50,8 @@ export function mountScenarioPlayer(
 	stage.scene.add(createTopologyView(scenario.topology, positions));
 	const packetView = createPacketView(positions);
 	stage.scene.add(packetView.group);
+	const connectionView = createConnectionView(positions);
+	stage.scene.add(connectionView.group);
 
 	const sidebar = createElement("aside", "sidebar");
 	container.appendChild(sidebar);
@@ -139,6 +142,7 @@ export function mountScenarioPlayer(
 		timeline = advance(timeline, frameDurationInMs);
 		const snapshot = snapshotAt(scenario, positionOf(timeline));
 		packetView.render(snapshot, selectedPacketId);
+		connectionView.render(snapshot.connections);
 		stepPanel.render(snapshot);
 		tablesView.render(snapshot.stepIndex, snapshot.tables);
 		packetListView.render(toPacketRows(snapshot), selectedPacketId);

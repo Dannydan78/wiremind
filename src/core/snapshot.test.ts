@@ -43,6 +43,7 @@ const THROUGH_THE_FIREWALL: Scenario = {
 	overview: "Un paquet de Kali traverse OPNsense jusqu'à la cible.",
 	topology: { machines: [], links: [] },
 	tables: [],
+	connections: [],
 	steps: [
 		{
 			title: "Deux sauts",
@@ -216,5 +217,57 @@ describe("snapshotAt · tables", () => {
 	test("le contenu persiste aux étapes suivantes, sans être signalé à nouveau", () => {
 		expect(tableAt(2).rows).toHaveLength(2);
 		expect(tableAt(2).changedRowIndexes).toEqual([]);
+	});
+});
+
+describe("snapshotAt · connexions", () => {
+	const WITH_CONNECTION: Scenario = {
+		...THROUGH_THE_FIREWALL,
+		connections: [
+			{
+				id: "ssh",
+				endpointMachineIds: ["kali", "target"],
+				label: "TCP",
+			},
+		],
+		steps: [
+			{ title: "Avant", explanation: "", events: [] },
+			{
+				title: "Ouverture",
+				explanation: "",
+				events: [
+					{ kind: "connection-update", connectionId: "ssh", state: "opening" },
+				],
+			},
+			{ title: "Pendant", explanation: "", events: [] },
+			{
+				title: "Établie",
+				explanation: "",
+				events: [
+					{
+						kind: "connection-update",
+						connectionId: "ssh",
+						state: "established",
+					},
+				],
+			},
+		],
+	};
+
+	function statesAt(stepIndex: number) {
+		return snapshotAt(WITH_CONNECTION, {
+			stepIndex,
+			progress: 0,
+		}).connections.map(({ state }) => state);
+	}
+
+	test("une connexion n'apparaît qu'à sa première mise à jour", () => {
+		expect(statesAt(0)).toEqual([]);
+		expect(statesAt(1)).toEqual(["opening"]);
+	});
+
+	test("son état persiste jusqu'à la mise à jour suivante", () => {
+		expect(statesAt(2)).toEqual(["opening"]);
+		expect(statesAt(3)).toEqual(["established"]);
 	});
 });

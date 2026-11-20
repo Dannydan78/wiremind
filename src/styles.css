@@ -6,6 +6,7 @@
 	--text-muted: #8b93b8;
 	--accent: #ffb703;
 	--cyan: #4cc9f0;
+	--green: #5ee6a8;
 	--selection: rgba(76, 201, 240, 0.22);
 	--highlight: rgba(255, 183, 3, 0.35);
 	/* Une couleur par couche, la même que les enveloppes du paquet en 3D. */
@@ -567,4 +568,26 @@ a.concept-card:focus-visible {
 
 .layer-icmp > .layer-title {
 	color: var(--layer-icmp);
+}
+
+.connection-label {
+	padding: 3px 10px;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	background: rgba(14, 21, 46, 0.85);
+	font: 600 12px / 1.4 var(--monospace);
+	white-space: nowrap;
+	transform: translateY(-16px);
+}
+
+.connection-label.is-opening {
+	color: var(--accent);
+}
+
+.connection-label.is-established {
+	color: var(--green);
+}
+
+.connection-label.is-closed {
+	color: var(--text-muted);
 }

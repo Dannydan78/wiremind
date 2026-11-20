@@ -53,6 +53,7 @@ function snapshotWith(
 		packetsInFlight: inFlight,
 		sentTransmissions,
 		tables: [],
+		connections: [],
 	};
 }
 

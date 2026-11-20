@@ -46,8 +46,30 @@ export type TableUpdate = {
 	readonly rows: readonly TableRow[];
 };
 
+/**
+ * Une connexion logique entre deux extrémités (une connexion TCP, par
+ * exemple). Elle n'existe pas sur les câbles : c'est un état que les deux
+ * extrémités mémorisent. Elle est donc dessinée à part, d'une extrémité à
+ * l'autre, par-dessus les machines intermédiaires.
+ */
+export type ConnectionDefinition = {
+	readonly id: string;
+	readonly endpointMachineIds: readonly [string, string];
+	/** Ce qui identifie la connexion : « TCP 10.0.0.5:40000 ⇄ 10.0.0.10:22 ». */
+	readonly label: string;
+};
+
+export type ConnectionState = "opening" | "established" | "closed";
+
+/** L'état d'une connexion à partir de cette étape. */
+export type ConnectionUpdate = {
+	readonly kind: "connection-update";
+	readonly connectionId: string;
+	readonly state: ConnectionState;
+};
+
 /** Ce qui se passe pendant une étape. */
-export type StepEvent = Transmission | TableUpdate;
+export type StepEvent = Transmission | TableUpdate | ConnectionUpdate;
 
 export type Step = {
 	readonly title: string;
@@ -63,6 +85,7 @@ export type Scenario = {
 	readonly overview: string;
 	readonly topology: Topology;
 	readonly tables: readonly TableDefinition[];
+	readonly connections: readonly ConnectionDefinition[];
 	readonly steps: readonly Step[];
 };
 
@@ -75,6 +98,12 @@ export function transmissionsOf(step: Step): Transmission[] {
 export function tableUpdatesOf(step: Step): TableUpdate[] {
 	return step.events.filter(
 		(event): event is TableUpdate => event.kind === "table-update",
+	);
+}
+
+export function connectionUpdatesOf(step: Step): ConnectionUpdate[] {
+	return step.events.filter(
+		(event): event is ConnectionUpdate => event.kind === "connection-update",
 	);
 }
 
@@ -108,6 +137,7 @@ export function assertValidScenario(scenario: Scenario): void {
 	}
 
 	assertValidTables(scenario);
+	assertValidConnections(scenario);
 }
 
 /**
@@ -166,6 +196,51 @@ function assertValidTables(scenario: Scenario): void {
 				);
 			}
 			assertRowsFitColumns(table, update.rows);
+		}
+	});
+}
+
+function assertValidConnections(scenario: Scenario): void {
+	const duplicateConnectionId = findDuplicate(
+		scenario.connections.map((connection) => connection.id),
+	);
+	if (duplicateConnectionId !== undefined) {
+		throw new Error(`Duplicate connection id: ${duplicateConnectionId}`);
+	}
+
+	for (const { id, endpointMachineIds } of scenario.connections) {
+		const [firstEndpoint, secondEndpoint] = endpointMachineIds;
+		if (firstEndpoint === secondEndpoint) {
+			throw new Error(`Connection ${id} links ${firstEndpoint} to itself`);
+		}
+		const unknownEndpoint = endpointMachineIds.find(
+			(machineId) => findMachine(scenario.topology, machineId) === undefined,
+		);
+		if (unknownEndpoint !== undefined) {
+			throw new Error(
+				`Connection ${id} ends at unknown machine ${unknownEndpoint}`,
+			);
+		}
+	}
+
+	scenario.steps.forEach((step, stepIndex) => {
+		const updates = connectionUpdatesOf(step);
+		const connectionUpdatedTwice = findDuplicate(
+			updates.map((update) => update.connectionId),
+		);
+		if (connectionUpdatedTwice !== undefined) {
+			throw new Error(
+				`Connection ${connectionUpdatedTwice} is updated twice in step ${stepIndex}`,
+			);
+		}
+		const unknownUpdate = updates.find(
+			({ connectionId }) =>
+				!scenario.connections.some(({ id }) => id === connectionId),
+		);
+		if (unknownUpdate !== undefined) {
+			throw new Error(
+				`Step ${stepIndex} updates unknown connection ${unknownUpdate.connectionId}`,
+			);
 		}
 	});
 }

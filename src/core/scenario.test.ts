@@ -109,6 +109,7 @@ const HANDSHAKE_START: Scenario = {
 	overview: "Kali ouvre une connexion SSH vers la cible.",
 	topology: SAME_SEGMENT,
 	tables: [],
+	connections: [],
 	steps: [synStep(kaliToTarget("syn", ["SYN"], 0, 0))],
 };
 
@@ -273,5 +274,62 @@ describe("assertValidScenario · tables", () => {
 		};
 
 		expect(() => assertValidScenario(scenario)).toThrow("updated twice");
+	});
+});
+
+describe("assertValidScenario · connexions", () => {
+	const SSH = {
+		id: "ssh",
+		endpointMachineIds: ["kali", "target"] as const,
+		label: "TCP 10.0.0.5:54321 ⇄ 10.0.0.10:22",
+	};
+
+	function openingStep(connectionId: string): Step {
+		return {
+			title: "Ouverture",
+			explanation: "",
+			events: [{ kind: "connection-update", connectionId, state: "opening" }],
+		};
+	}
+
+	test("accepte une connexion entre deux machines connues", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			connections: [SSH],
+			steps: [openingStep("ssh")],
+		};
+
+		expect(() => assertValidScenario(scenario)).not.toThrow();
+	});
+
+	test("refuse une connexion vers une machine inconnue", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			connections: [{ ...SSH, endpointMachineIds: ["kali", "router"] }],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow(
+			"unknown machine router",
+		);
+	});
+
+	test("refuse une connexion d'une machine vers elle-même", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			connections: [{ ...SSH, endpointMachineIds: ["kali", "kali"] }],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow("to itself");
+	});
+
+	test("refuse la mise à jour d'une connexion inconnue", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			steps: [openingStep("ghost")],
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow(
+			"unknown connection ghost",
+		);
 	});
 });

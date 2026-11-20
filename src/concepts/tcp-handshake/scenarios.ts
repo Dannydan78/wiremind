@@ -182,6 +182,13 @@ export const SSH_HANDSHAKE: Scenario = {
 			initialRows: [UBUNTU_LISTENING],
 		},
 	],
+	connections: [
+		{
+			id: "ssh",
+			endpointMachineIds: ["kali", "ubuntu"],
+			label: `TCP ${KALI_SOCKET} ⇄ ${UBUNTU_SOCKET}`,
+		},
+	],
 	steps: [
 		{
 			title: "SYN",
@@ -206,6 +213,7 @@ export const SSH_HANDSHAKE: Scenario = {
 					tableId: "kali-tcp",
 					rows: [["SYN-SENT", KALI_SOCKET, UBUNTU_SOCKET]],
 				},
+				{ kind: "connection-update", connectionId: "ssh", state: "opening" },
 			],
 		},
 		{
@@ -267,6 +275,11 @@ export const SSH_HANDSHAKE: Scenario = {
 					kind: "table-update",
 					tableId: "ubuntu-tcp",
 					rows: [UBUNTU_LISTENING, ["ESTAB", UBUNTU_SOCKET, KALI_SOCKET]],
+				},
+				{
+					kind: "connection-update",
+					connectionId: "ssh",
+					state: "established",
 				},
 			],
 		},

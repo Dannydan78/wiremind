@@ -4,6 +4,9 @@
  */
 
 import {
+	type ConnectionDefinition,
+	type ConnectionState,
+	connectionUpdatesOf,
 	type Scenario,
 	type Step,
 	type TableDefinition,
@@ -30,6 +33,11 @@ export type TableState = {
 	readonly changedRowIndexes: readonly number[];
 };
 
+export type ConnectionStatus = {
+	readonly definition: ConnectionDefinition;
+	readonly state: ConnectionState;
+};
+
 export type ScenarioSnapshot = {
 	readonly stepIndex: number;
 	readonly step: Step;
@@ -40,6 +48,8 @@ export type ScenarioSnapshot = {
 	 */
 	readonly sentTransmissions: readonly Transmission[];
 	readonly tables: readonly TableState[];
+	/** Les connexions déjà apparues, dans leur état pendant l'étape. */
+	readonly connections: readonly ConnectionStatus[];
 };
 
 /**
@@ -92,7 +102,23 @@ export function snapshotAt(
 		tables: scenario.tables.map((definition) =>
 			tableStateAt(scenario, definition, stepIndex),
 		),
+		connections: scenario.connections.flatMap((definition) => {
+			const state = connectionStateAt(scenario, definition, stepIndex);
+			return state === undefined ? [] : [{ definition, state }];
+		}),
 	};
+}
+
+/** `undefined` tant qu'aucune étape n'a encore parlé de la connexion. */
+function connectionStateAt(
+	scenario: Scenario,
+	definition: ConnectionDefinition,
+	stepIndex: number,
+): ConnectionState | undefined {
+	return scenario.steps
+		.slice(0, stepIndex + 1)
+		.flatMap(connectionUpdatesOf)
+		.findLast((update) => update.connectionId === definition.id)?.state;
 }
 
 /** −1 si l'étape n'a aucune transmission. */

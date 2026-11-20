@@ -103,3 +103,21 @@ describe("SSH_HANDSHAKE · états TCP", () => {
 		});
 	});
 });
+
+describe("SSH_HANDSHAKE · connexion", () => {
+	function connectionStateDuring(stepIndex: number) {
+		const { connections } = snapshotAt(SSH_HANDSHAKE, {
+			stepIndex,
+			progress: 0,
+		});
+		return connections.map(({ state }) => state);
+	}
+
+	test("la connexion n'est établie que quand les deux côtés sont en ESTAB", () => {
+		expect(connectionStateDuring(0)).toEqual(["opening"]);
+		expect(connectionStateDuring(1)).toEqual(["opening"]);
+		// Kali est déjà en ESTAB, mais Ubuntu attend encore l'ACK.
+		expect(connectionStateDuring(2)).toEqual(["opening"]);
+		expect(connectionStateDuring(3)).toEqual(["established"]);
+	});
+});
