@@ -1,0 +1,22 @@
+src/concepts/tcp-handshake/scenarios.ts
+  s_7191ab7235bb49::t_bc673b92959541 149-157,164-165,167-182,191-194,202-206,212-218,226-230,237-240,248-268
+src/concepts/tcp-handshake/scenarios.test.ts
+  s_7191ab7235bb49::t_7d072d03cb2831 5,77-105
+  s_7191ab7235bb49::t_553ec23a7a3659 4,60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f99236a9f87bc98d9a88ea997c7fcd2275315613",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
