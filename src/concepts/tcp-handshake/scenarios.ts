@@ -165,6 +165,11 @@ export const SSH_HANDSHAKE: Scenario = {
 		"les noyaux des deux machines établissent la connexion TCP en trois " +
 		"paquets : SYN, SYN-ACK, ACK. Les tables montrent l'état de la " +
 		"connexion de chaque côté, comme `ss -tan`.",
+	// Le nom d'utilisateur n'est pas écrit : le dépôt est public.
+	trigger: {
+		machineId: "kali",
+		command: `ssh <utilisateur>@${UBUNTU.ipv4Address}`,
+	},
 	topology: LAB_SEGMENT,
 	tables: [
 		{
@@ -283,5 +288,21 @@ export const SSH_HANDSHAKE: Scenario = {
 				},
 			],
 		},
+	],
+	summary: [
+		"Kali demande à Ubuntu d'ouvrir une connexion en visant son IP " +
+			"(192.168.64.3) et le port 22, avec un SYN qui porte son numéro de " +
+			"départ X.",
+		"Les deux machines n'ont pas besoin d'être sur le même réseau : il " +
+			"suffit qu'une route existe entre elles et qu'aucun pare-feu ne " +
+			"bloque. Ici, elles le sont : c'est le cas le plus simple.",
+		"Ubuntu écoute le port 22 (LISTEN). Il répond par un SYN-ACK : il " +
+			"acquitte X (ack = X + 1) et annonce son propre numéro Y. Il passe " +
+			"en SYN-RECV.",
+		"Kali reçoit le SYN-ACK, passe en ESTAB et renvoie un ACK " +
+			"(ack = Y + 1). Ubuntu reçoit cet ACK et passe en ESTAB à son tour.",
+		"La connexion TCP est établie : SSH peut commencer (échange des clés, " +
+			"chiffrement, puis authentification). Si personne n'écoutait sur le " +
+			"port 22, Ubuntu aurait répondu RST, et nmap aurait affiché closed.",
 	],
 };

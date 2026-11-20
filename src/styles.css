@@ -114,6 +114,58 @@ body {
 	color: var(--text-muted);
 }
 
+.scenario-trigger {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0 0 12px;
+	padding: 8px 10px;
+	border: 1px solid var(--panel-border);
+	border-radius: 8px;
+	background: #0a0f24;
+}
+
+.trigger-machine {
+	font-size: 11px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.trigger-command {
+	font: 13px / 1.4 var(--monospace);
+	color: var(--green);
+	overflow-wrap: anywhere;
+}
+
+.scenario-summary {
+	margin-top: 12px;
+	padding: 10px 12px;
+	border-left: 3px solid var(--green);
+	border-radius: 0 8px 8px 0;
+	background: rgba(94, 230, 168, 0.08);
+}
+
+.scenario-summary[hidden] {
+	display: none;
+}
+
+.summary-title {
+	margin: 0 0 6px;
+	font-size: 12px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--green);
+}
+
+.scenario-summary p {
+	margin: 0 0 6px;
+}
+
+.scenario-summary p:last-child {
+	margin-bottom: 0;
+}
+
 .step-counter {
 	margin: 0;
 	font-size: 12px;
