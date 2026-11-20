@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { encodeFrame } from "../../core/frame";
 import type { Packet, TcpSegment } from "../../core/packet";
-import { assertValidScenario } from "../../core/scenario";
+import { assertValidScenario, transmissionsOf } from "../../core/scenario";
+import { snapshotAt } from "../../core/snapshot";
 import { SSH_HANDSHAKE } from "./scenarios";
 
 /**
@@ -56,9 +57,9 @@ describe("SSH_HANDSHAKE", () => {
 });
 
 function packetsOf(): Packet[] {
-	return SSH_HANDSHAKE.steps.flatMap((step) =>
-		step.events.map((transmission) => transmission.packet),
-	);
+	return SSH_HANDSHAKE.steps
+		.flatMap(transmissionsOf)
+		.map((transmission) => transmission.packet);
 }
 
 function tcpOf(packet: Packet): TcpSegment {
@@ -73,3 +74,32 @@ function toHex(bytes: Uint8Array): string {
 		"",
 	);
 }
+
+describe("SSH_HANDSHAKE · états TCP", () => {
+	/** L'état de chaque côté pendant chaque étape, comme `ss -tan`. */
+	function statesDuring(stepIndex: number): Record<string, string[]> {
+		const { tables } = snapshotAt(SSH_HANDSHAKE, { stepIndex, progress: 0 });
+		return Object.fromEntries(
+			tables.map(({ definition, rows }) => [
+				definition.machineId,
+				rows.map(([state]) => state ?? ""),
+			]),
+		);
+	}
+
+	test("un état change quand le paquet part ou arrive, pas avant", () => {
+		expect(statesDuring(0)).toEqual({ kali: ["SYN-SENT"], ubuntu: ["LISTEN"] });
+		expect(statesDuring(1)).toEqual({
+			kali: ["SYN-SENT"],
+			ubuntu: ["LISTEN", "SYN-RECV"],
+		});
+		expect(statesDuring(2)).toEqual({
+			kali: ["ESTAB"],
+			ubuntu: ["LISTEN", "SYN-RECV"],
+		});
+		expect(statesDuring(3)).toEqual({
+			kali: ["ESTAB"],
+			ubuntu: ["LISTEN", "ESTAB"],
+		});
+	});
+});

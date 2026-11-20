@@ -146,14 +146,40 @@ const ACK: Packet = {
 	payloadSizeInBytes: 0,
 };
 
+const KALI_SOCKET = `${KALI.ipv4Address}:${KALI_PORT}`;
+const UBUNTU_SOCKET = `${UBUNTU.ipv4Address}:${SSH_PORT}`;
+
+/** Les colonnes de `ss -tan`, filtrées sur cette connexion et le port 22. */
+const TCP_STATE_COLUMNS = ["État", "Adresse locale", "Adresse distante"];
+
+/** La socket d'écoute de sshd : elle reste là pendant toute la connexion. */
+const UBUNTU_LISTENING = ["LISTEN", "0.0.0.0:22", "0.0.0.0:*"];
+
 export const SSH_HANDSHAKE: Scenario = {
 	id: "ssh-handshake",
 	title: "Handshake TCP vers SSH",
 	overview:
 		"Kali ouvre une connexion SSH vers Ubuntu. Avant tout échange SSH, " +
 		"les noyaux des deux machines établissent la connexion TCP en trois " +
-		"paquets : SYN, SYN-ACK, ACK.",
+		"paquets : SYN, SYN-ACK, ACK. Les tables montrent l'état de la " +
+		"connexion de chaque côté, comme `ss -tan`.",
 	topology: LAB_SEGMENT,
+	tables: [
+		{
+			id: "kali-tcp",
+			title: "Kali · connexions TCP",
+			machineId: "kali",
+			columns: TCP_STATE_COLUMNS,
+			initialRows: [],
+		},
+		{
+			id: "ubuntu-tcp",
+			title: "Ubuntu · connexions TCP",
+			machineId: "ubuntu",
+			columns: TCP_STATE_COLUMNS,
+			initialRows: [UBUNTU_LISTENING],
+		},
+	],
 	steps: [
 		{
 			title: "SYN",
@@ -162,8 +188,10 @@ export const SSH_HANDSHAKE: Scenario = {
 				"d'Ubuntu. Il choisit un port source éphémère (33534) et un numéro " +
 				"de séquence initial aléatoire (2013810038). Ses options annoncent " +
 				"ce qu'il sait faire : MSS 1460, SACK, horodatage, facteur " +
-				"d'échelle 9. Les deux machines sont sur le même réseau /24 : la " +
-				"trame va directement à l'adresse MAC d'Ubuntu.",
+				"d'échelle 9. Côté Kali, la connexion passe à SYN-SENT ; Ubuntu, " +
+				"qui n'a encore rien reçu, reste en LISTEN. Les deux machines sont " +
+				"sur le même réseau /24 : la trame va directement à l'adresse MAC " +
+				"d'Ubuntu.",
 			events: [
 				{
 					kind: "transmission",
@@ -171,17 +199,23 @@ export const SSH_HANDSHAKE: Scenario = {
 					toMachineId: "ubuntu",
 					packet: SYN,
 				},
+				{
+					kind: "table-update",
+					tableId: "kali-tcp",
+					rows: [["SYN-SENT", KALI_SOCKET, UBUNTU_SOCKET]],
+				},
 			],
 		},
 		{
 			title: "SYN-ACK",
 			explanation:
-				"sshd écoute sur le port 22 : le noyau d'Ubuntu accepte. En un " +
-				"seul paquet, il acquitte le SYN (ack 2013810039, soit le numéro " +
-				"de Kali + 1) et annonce son propre numéro initial, lui aussi " +
-				"aléatoire (2329341421). Il renvoie l'horodatage de Kali pour lui " +
-				"permettre de mesurer l'aller-retour. C'est ce paquet qui fait " +
-				"afficher « open » à nmap.",
+				"sshd écoute sur le port 22 : le noyau d'Ubuntu accepte. Il crée " +
+				"une nouvelle entrée pour cette connexion, en SYN-RECV, à côté de " +
+				"la socket d'écoute qui reste en LISTEN pour les autres clients. " +
+				"En un seul paquet, il acquitte le SYN (ack 2013810039, soit le " +
+				"numéro de Kali + 1) et annonce son propre numéro initial, lui " +
+				"aussi aléatoire (2329341421). C'est ce paquet qui fait afficher " +
+				"« open » à nmap.",
 			events: [
 				{
 					kind: "transmission",
@@ -189,22 +223,48 @@ export const SSH_HANDSHAKE: Scenario = {
 					toMachineId: "kali",
 					packet: SYN_ACK,
 				},
+				{
+					kind: "table-update",
+					tableId: "ubuntu-tcp",
+					rows: [UBUNTU_LISTENING, ["SYN-RECV", UBUNTU_SOCKET, KALI_SOCKET]],
+				},
 			],
 		},
 		{
 			title: "ACK",
 			explanation:
 				"Kali acquitte le numéro d'Ubuntu (ack 2329341422, soit son " +
-				"numéro + 1). Chaque côté connaît et a confirmé le numéro de " +
-				"départ de l'autre : la connexion est établie et SSH peut " +
-				"commencer. La fenêtre vaut 126, mais avec le facteur d'échelle " +
-				"9 négocié, elle représente 126 × 512 = 64 512 octets.",
+				"numéro + 1). Pour Kali, la connexion est établie dès l'envoi : " +
+				"elle passe à ESTAB. Ubuntu, qui n'a pas encore reçu cet ACK, " +
+				"reste en SYN-RECV. La fenêtre vaut 126, mais avec le facteur " +
+				"d'échelle 9 négocié, elle représente 126 × 512 = 64 512 octets.",
 			events: [
 				{
 					kind: "transmission",
 					fromMachineId: "kali",
 					toMachineId: "ubuntu",
 					packet: ACK,
+				},
+				{
+					kind: "table-update",
+					tableId: "kali-tcp",
+					rows: [["ESTAB", KALI_SOCKET, UBUNTU_SOCKET]],
+				},
+			],
+		},
+		{
+			title: "Connexion établie",
+			explanation:
+				"L'ACK est arrivé : la connexion passe à ESTAB chez Ubuntu aussi. " +
+				"Chaque côté connaît et a confirmé le numéro de départ de l'autre, " +
+				"et SSH peut commencer. La socket d'écoute est toujours en LISTEN : " +
+				"chaque connexion a sa propre entrée, exactement comme dans la " +
+				"table d'état d'un pare-feu.",
+			events: [
+				{
+					kind: "table-update",
+					tableId: "ubuntu-tcp",
+					rows: [UBUNTU_LISTENING, ["ESTAB", UBUNTU_SOCKET, KALI_SOCKET]],
 				},
 			],
 		},
