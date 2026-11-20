@@ -1,22 +1,22 @@
 # Pare-feu (OPNsense / pf)
 
-Le vocabulaire du concept pare-feu : ce qu'un paquet traverse, de la carte réseau de Kali jusqu'à la décision d'OPNsense. Les exemples viennent du labo.
+Le vocabulaire du concept pare-feu : ce qu'un paquet traverse, de la carte réseau de l'émetteur jusqu'à la décision du pare-feu. Les définitions sont génériques ; les valeurs concrètes du labo vivent dans les scénarios, pas ici.
 
 ## Le réseau local
 
 **Carte réseau** :
 Le composant, physique ou virtuel, qui relie une machine à un réseau : elle émet et reçoit les trames sur le câble. Chaque carte possède une adresse MAC.
-_Dans le labo_ : les cartes des VM sont virtuelles, simulées par l'hyperviseur.
+_Exemple_ : dans une machine virtuelle, la carte est simulée par l'hyperviseur.
 _Avoid_ : NIC, carte Ethernet
 
 **Interface** :
-Le nom que le système donne à une carte réseau, et à laquelle il attribue une adresse IP. Une carte peut porter plusieurs interfaces (VLAN), mais dans le labo c'est une pour une.
-_Dans le labo_ : `eth0` sur Kali, `enp0s1` sur Ubuntu, `WAN` et `LAN` sur OPNsense.
+Le nom que le système donne à une carte réseau, et à laquelle il attribue une adresse IP. Une carte peut porter plusieurs interfaces (VLAN).
+_Exemple_ : `eth0` ou `enp0s1` sous Linux ; `WAN` et `LAN` sur un pare-feu.
 _Avoid_ : port réseau, carte (quand on parle de l'IP)
 
 **Adresse MAC** :
 L'identifiant d'une carte réseau sur le réseau local, sur 6 octets. Elle ne sert qu'à atteindre une machine **voisine** : elle ne traverse jamais un routeur ou un pare-feu.
-_Dans le labo_ : `3a:4d:3d:23:32:f8` (Kali), `fe:75:bd:ba:e1:b6` (Ubuntu).
+_Exemple_ : `00:1a:2b:3c:4d:5e`.
 _Avoid_ : adresse physique, adresse matérielle
 
 **Trame** :
@@ -24,8 +24,7 @@ L'unité qui circule sur un câble : un en-tête Ethernet (MAC destination, MAC 
 _Avoid_ : paquet (quand on parle des MAC)
 
 **Segment réseau** :
-L'ensemble des machines qui s'atteignent directement par leurs adresses MAC, sans routeur ni pare-feu entre elles.
-_Dans le labo_ : Kali et Ubuntu sur `192.168.64.0/24` partagent un segment ; quand OPNsense sera en place, le WAN et le LAN seront deux segments distincts.
+L'ensemble des machines qui s'atteignent directement par leurs adresses MAC, sans routeur ni pare-feu entre elles. Un pare-feu sépare au moins deux segments : celui de son WAN et celui de son LAN.
 _Avoid_ : sous-réseau (qui désigne la plage d'adresses IP, pas le lien physique)
 
 **Commutateur** :
@@ -33,21 +32,24 @@ L'équipement qui relie les machines d'un segment et n'envoie chaque trame que v
 _Avoid_ : switch, hub (un hub, lui, répète tout à tout le monde)
 
 **ARP** :
-Le protocole qui trouve l'adresse MAC correspondant à une adresse IP du même segment : « qui a 192.168.64.3 ? Répondez à 192.168.64.4. »
+Le protocole qui trouve l'adresse MAC correspondant à une adresse IP du même segment.
+_Exemple_ : « qui a 192.168.1.20 ? Répondez à 192.168.1.10. »
 
 ## IP et routage
 
 **Adresse IP** :
 L'adresse d'une interface à l'échelle du réseau entier, sur 4 octets en IPv4. Contrairement à la MAC, elle reste la même de bout en bout, sauf si un NAT la réécrit.
-_Dans le labo_ : `192.168.64.4` (Kali), `192.168.64.3` (Ubuntu).
+
+**Adresse privée** :
+Une adresse IP réservée aux réseaux internes et jamais routée sur Internet : `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`. Pour sortir sur Internet, une machine qui en porte une passe par un NAT.
 
 **Préfixe** :
-Le nombre de bits de l'adresse IP qui désignent le réseau ; le reste désigne la machine. `/24` signifie que les 3 premiers octets identifient le réseau : `192.168.64.0/24` va de `.0` à `.255`.
+Le nombre de bits de l'adresse IP qui désignent le réseau ; le reste désigne la machine.
+_Exemple_ : `/24` signifie que les 3 premiers octets identifient le réseau : `192.168.1.0/24` va de `.0` à `.255`.
 _Avoid_ : masque (`255.255.255.0`, la même information écrite autrement)
 
 **Passerelle** :
-Le routeur à qui une machine confie tout paquet destiné à une adresse hors de son segment.
-_Dans le labo_ : derrière le pare-feu, la passerelle de la cible sera l'interface LAN d'OPNsense.
+Le routeur à qui une machine confie tout paquet destiné à une adresse hors de son segment. Derrière un pare-feu, c'est en général l'interface LAN du pare-feu.
 _Avoid_ : gateway, route par défaut (qui est la règle qui pointe vers la passerelle)
 
 **Routeur** :
@@ -59,17 +61,16 @@ _Avoid_ : datagramme (sauf pour UDP), trame
 
 **TTL** :
 Un compteur de l'en-tête IP, décrémenté par chaque routeur traversé ; à 0, le paquet est détruit. Il empêche un paquet de tourner en boucle à l'infini.
-_Dans le labo_ : Linux part de 64.
+_Exemple_ : Linux part de 64, Windows de 128.
 
 ## Transport
 
 **Port** :
 Un numéro de 0 à 65535 qui désigne un service sur une machine : l'adresse IP désigne la machine, le port désigne le programme.
-_Dans le labo_ : 22 pour SSH, 80 pour le web.
+_Exemple_ : 22 pour SSH, 53 pour le DNS, 80 pour le web.
 
 **Port éphémère** :
 Le port source choisi au hasard par le système pour une connexion sortante, dans une plage élevée (32768–60999 sous Linux).
-_Dans le labo_ : 58228 pour le `ssh` de Kali.
 
 **TCP** :
 Le protocole de transport qui établit une connexion, numérote chaque octet et retransmet ce qui est perdu. Utilisé par SSH et le web.
@@ -87,6 +88,29 @@ Les bits de l'en-tête TCP qui indiquent le rôle d'un segment : **SYN** ouvre u
 Le numéro du premier octet porté par un segment TCP. Le premier, choisi au hasard pour chaque connexion, rend difficile l'injection de faux segments.
 _Avoid_ : ISN (qui ne désigne que le numéro initial)
 
+**Numéro d'acquittement** :
+Le prochain numéro de séquence qu'un côté attend de l'autre : il confirme que tout ce qui précède est bien arrivé. N'a de sens que si le flag ACK est levé.
+_Exemple_ : un SYN de numéro 1000 est acquitté par `Ack=1001`.
+_Avoid_ : ACK (qui désigne le flag), accusé de réception
+
+**Fenêtre de réception** :
+Le nombre d'octets qu'un côté accepte de recevoir avant d'envoyer un acquittement ; elle empêche un émetteur rapide de noyer un récepteur lent.
+_Avoid_ : Win, window
+
+**Facteur d'échelle de fenêtre** :
+Un multiplicateur négocié pendant le handshake : la fenêtre réelle vaut la fenêtre annoncée × 2^facteur. Sans lui, une fenêtre ne pourrait pas dépasser 65 535 octets.
+_Exemple_ : `Win=126` avec un facteur 9 représente 126 × 512 = 64 512 octets.
+_Avoid_ : window scale, wscale
+
+**MSS** :
+La taille maximale de données qu'un côté accepte dans un seul segment TCP, annoncée pendant le handshake.
+_Exemple_ : sur Ethernet, 1500 − 20 (IP) − 20 (TCP) = 1460 octets.
+_Avoid_ : taille de segment
+
+**Longueur des données** :
+La taille du contenu porté par un segment, en-têtes non compris. Elle vaut 0 pendant le handshake, qui ne transporte aucune donnée.
+_Avoid_ : Len, payload
+
 **Handshake TCP** :
 L'échange de trois segments qui ouvre une connexion TCP : SYN, SYN-ACK, ACK. Chaque côté y annonce son numéro de séquence initial et confirme celui de l'autre.
 _Avoid_ : poignée de main, three-way handshake
@@ -102,7 +126,7 @@ Un routeur qui examine chaque paquet entrant sur ses interfaces et décide, selo
 _Avoid_ : firewall
 
 **OPNsense** :
-La distribution de pare-feu du labo, basée sur FreeBSD. Son moteur de filtrage est pf ; son interface web génère les règles pf.
+Une distribution de pare-feu basée sur FreeBSD. Son moteur de filtrage est pf ; son interface web génère les règles pf.
 
 **pf** :
 Le moteur de filtrage de paquets de FreeBSD qu'utilise OPNsense. C'est lui qui applique la table d'état, le NAT et les règles.
@@ -110,11 +134,9 @@ _Avoid_ : packet filter
 
 **WAN** :
 L'interface du pare-feu tournée vers l'extérieur, d'où viennent les menaces.
-_Dans le labo_ : le côté de Kali.
 
 **LAN** :
 L'interface du pare-feu tournée vers le réseau interne à protéger.
-_Dans le labo_ : le côté de la cible.
 
 **Règle** :
 Une ligne de la table de filtrage : des critères (interface, protocole, source, destination, port) et une action (`pass`, `block` ou `reject`). Les règles d'une interface s'appliquent aux paquets qui **entrent** par cette interface.
@@ -161,7 +183,7 @@ _Avoid_ : port forwarding, rdr
 L'envoi de paquets vers une série de ports pour savoir lesquels ont un service à l'écoute.
 
 **nmap** :
-L'outil de scan de ports utilisé depuis Kali.
+L'outil de scan de ports le plus répandu.
 
 **Scan SYN** :
 Le scan de nmap (`nmap -sS`) qui envoie un SYN et analyse la réponse sans jamais terminer le handshake.
