@@ -115,6 +115,14 @@ _Avoid_ : Len, payload
 L'échange de trois segments qui ouvre une connexion TCP : SYN, SYN-ACK, ACK. Chaque côté y annonce son numéro de séquence initial et confirme celui de l'autre.
 _Avoid_ : poignée de main, three-way handshake
 
+**Socket d'écoute** :
+L'entrée qu'un serveur ouvre sur un port pour attendre les clients, dans l'état LISTEN. Elle reste en place pendant les connexions : chaque client accepté obtient sa propre entrée.
+_Avoid_ : port ouvert (qui désigne ce qu'en voit un scan)
+
+**État de connexion TCP** :
+L'étape où en est une connexion de chaque côté, telle que l'affiche `ss -tan` : LISTEN (en attente), SYN-SENT (SYN envoyé), SYN-RECV (SYN reçu, SYN-ACK envoyé), ESTAB (établie). Chaque côté change d'état quand il envoie ou reçoit un segment, pas en même temps que l'autre.
+_Avoid_ : statut
+
 **Connexion** :
 Un échange TCP identifié par quatre valeurs : IP source, port source, IP destination, port destination.
 _Avoid_ : session (qui désigne un niveau au-dessus, comme une session SSH)
