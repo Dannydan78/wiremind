@@ -75,9 +75,21 @@ export function createStage(container: HTMLElement): Stage {
 			renderer.setAnimationLoop(null);
 			window.removeEventListener("resize", resize);
 			controls.dispose();
+			// renderer.dispose() ne libère pas la mémoire GPU des objets de
+			// la scène : il faut le faire objet par objet.
+			scene.traverse(disposeGpuResources);
 			renderer.dispose();
 			renderer.domElement.remove();
 			labelRenderer.domElement.remove();
 		},
 	};
+}
+
+function disposeGpuResources(object: THREE.Object3D): void {
+	if (!(object instanceof THREE.Mesh || object instanceof THREE.Line)) return;
+	object.geometry.dispose();
+	const materials: THREE.Material[] = Array.isArray(object.material)
+		? object.material
+		: [object.material];
+	for (const material of materials) material.dispose();
 }
