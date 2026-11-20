@@ -19,6 +19,11 @@ export type ScenarioSnapshot = {
 	readonly stepIndex: number;
 	readonly step: Step;
 	readonly packetsInFlight: readonly PacketInFlight[];
+	/**
+	 * Toutes les transmissions déjà parties, dans l'ordre, y compris celle
+	 * en vol : ce qu'une capture aurait enregistré jusqu'ici.
+	 */
+	readonly sentTransmissions: readonly Transmission[];
 };
 
 /**
@@ -45,26 +50,37 @@ export function snapshotAt(
 	if (step === undefined) {
 		throw new Error(`Scenario ${scenario.id} has no step ${stepIndex}`);
 	}
+	const activeIndex = activeTransmissionIndexOf(step.events, progress);
+	const transmission = step.events[activeIndex];
+	const packetsInFlight =
+		transmission === undefined
+			? []
+			: [
+					{
+						transmission,
+						progress: progress * step.events.length - activeIndex,
+					},
+				];
 	return {
 		stepIndex,
 		step,
-		packetsInFlight: findPacketsInFlight(step.events, progress),
+		packetsInFlight,
+		sentTransmissions: [
+			...scenario.steps.slice(0, stepIndex).flatMap((done) => done.events),
+			...step.events.slice(0, activeIndex + 1),
+		],
 	};
 }
 
-function findPacketsInFlight(
+/** −1 si l'étape n'a aucune transmission. */
+function activeTransmissionIndexOf(
 	transmissions: readonly Transmission[],
 	stepProgress: number,
-): PacketInFlight[] {
+): number {
 	const transmissionCount = transmissions.length;
 	// La fin d'étape (progress = 1) appartient à la dernière transmission.
-	const activeIndex = Math.min(
+	return Math.min(
 		Math.floor(stepProgress * transmissionCount),
 		transmissionCount - 1,
 	);
-	const transmission = transmissions[activeIndex];
-	if (transmission === undefined) return [];
-	return [
-		{ transmission, progress: stepProgress * transmissionCount - activeIndex },
-	];
 }

@@ -126,4 +126,37 @@ describe("snapshotAt", () => {
 			snapshotAt(THROUGH_THE_FIREWALL, { stepIndex: 2, progress: 0 }),
 		).toThrow("no step 2");
 	});
+
+	test("compte comme envoyée la transmission en vol", () => {
+		const snapshot = snapshotAt(THROUGH_THE_FIREWALL, {
+			stepIndex: 0,
+			progress: 0.25,
+		});
+
+		expect(snapshot.sentTransmissions).toEqual([KALI_TO_FIREWALL]);
+	});
+
+	test("accumule les transmissions de l'étape, dans l'ordre", () => {
+		const snapshot = snapshotAt(THROUGH_THE_FIREWALL, {
+			stepIndex: 0,
+			progress: 0.75,
+		});
+
+		expect(snapshot.sentTransmissions).toEqual([
+			KALI_TO_FIREWALL,
+			FIREWALL_TO_TARGET,
+		]);
+	});
+
+	test("garde les transmissions des étapes précédentes", () => {
+		const snapshot = snapshotAt(THROUGH_THE_FIREWALL, {
+			stepIndex: 1,
+			progress: 0,
+		});
+
+		expect(snapshot.sentTransmissions).toEqual([
+			KALI_TO_FIREWALL,
+			FIREWALL_TO_TARGET,
+		]);
+	});
 });

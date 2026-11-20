@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { Packet, TcpFlag } from "./packet";
-import { assertValidScenario, type Scenario, type Step } from "./scenario";
+import {
+	assertValidScenario,
+	findPacket,
+	type Scenario,
+	type Step,
+} from "./scenario";
 import type { Topology } from "./topology";
 
 const KALI_MAC = "08:00:27:aa:aa:aa";
@@ -103,6 +108,16 @@ const HANDSHAKE_START: Scenario = {
 	topology: SAME_SEGMENT,
 	steps: [synStep(kaliToTarget("syn", ["SYN"], 0, 0))],
 };
+
+describe("findPacket", () => {
+	test("trouve un paquet par son id, quelle que soit son étape", () => {
+		expect(findPacket(HANDSHAKE_START, "syn")?.id).toBe("syn");
+	});
+
+	test("ne trouve rien pour un id inconnu", () => {
+		expect(findPacket(HANDSHAKE_START, "unknown")).toBeUndefined();
+	});
+});
 
 describe("assertValidScenario", () => {
 	test("accepte un scénario cohérent", () => {

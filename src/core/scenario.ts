@@ -42,6 +42,16 @@ export type Scenario = {
 	readonly steps: readonly Step[];
 };
 
+export function findPacket(
+	scenario: Scenario,
+	packetId: string,
+): Packet | undefined {
+	return scenario.steps
+		.flatMap((step) => step.events)
+		.map((transmission) => transmission.packet)
+		.find((packet) => packet.id === packetId);
+}
+
 /** Lance une erreur décrivant le premier défaut de structure trouvé. */
 export function assertValidScenario(scenario: Scenario): void {
 	assertValidTopology(scenario.topology);
