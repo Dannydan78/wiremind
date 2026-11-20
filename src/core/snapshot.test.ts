@@ -41,6 +41,8 @@ const THROUGH_THE_FIREWALL: Scenario = {
 	id: "through-the-firewall",
 	title: "Traversée du pare-feu",
 	overview: "Un paquet de Kali traverse OPNsense jusqu'à la cible.",
+	trigger: { machineId: "kali", command: "ping 10.0.1.10" },
+	summary: [],
 	topology: { machines: [], links: [] },
 	tables: [],
 	connections: [],

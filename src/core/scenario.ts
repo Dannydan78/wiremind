@@ -78,15 +78,25 @@ export type Step = {
 	readonly events: readonly StepEvent[];
 };
 
+/** La commande à taper dans le labo pour reproduire le scénario. */
+export type ScenarioTrigger = {
+	/** La machine sur laquelle on tape la commande. */
+	readonly machineId: string;
+	readonly command: string;
+};
+
 export type Scenario = {
 	readonly id: string;
 	readonly title: string;
 	/** Présentation affichée avant la première étape. */
 	readonly overview: string;
+	readonly trigger: ScenarioTrigger;
 	readonly topology: Topology;
 	readonly tables: readonly TableDefinition[];
 	readonly connections: readonly ConnectionDefinition[];
 	readonly steps: readonly Step[];
+	/** Ce qu'il faut retenir, un paragraphe par idée, affiché à la fin. */
+	readonly summary: readonly string[];
 };
 
 export function transmissionsOf(step: Step): Transmission[] {
@@ -138,6 +148,11 @@ export function assertValidScenario(scenario: Scenario): void {
 
 	assertValidTables(scenario);
 	assertValidConnections(scenario);
+
+	const { machineId } = scenario.trigger;
+	if (findMachine(scenario.topology, machineId) === undefined) {
+		throw new Error(`The trigger runs on unknown machine ${machineId}`);
+	}
 }
 
 /**

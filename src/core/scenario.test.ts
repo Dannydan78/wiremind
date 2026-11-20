@@ -107,10 +107,12 @@ const HANDSHAKE_START: Scenario = {
 	id: "tcp-handshake",
 	title: "Handshake TCP",
 	overview: "Kali ouvre une connexion SSH vers la cible.",
+	trigger: { machineId: "kali", command: "ssh user@10.0.0.10" },
 	topology: SAME_SEGMENT,
 	tables: [],
 	connections: [],
 	steps: [synStep(kaliToTarget("syn", ["SYN"], 0, 0))],
+	summary: [],
 };
 
 describe("findPacket", () => {
@@ -330,6 +332,19 @@ describe("assertValidScenario · connexions", () => {
 
 		expect(() => assertValidScenario(scenario)).toThrow(
 			"unknown connection ghost",
+		);
+	});
+});
+
+describe("assertValidScenario · commande", () => {
+	test("refuse une commande tapée sur une machine inconnue", () => {
+		const scenario: Scenario = {
+			...HANDSHAKE_START,
+			trigger: { machineId: "router", command: "ping 10.0.0.10" },
+		};
+
+		expect(() => assertValidScenario(scenario)).toThrow(
+			"trigger runs on unknown machine router",
 		);
 	});
 });
