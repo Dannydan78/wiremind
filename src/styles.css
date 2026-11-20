@@ -22,12 +22,6 @@ body {
 		sans-serif;
 }
 
-/* lil-gui à gauche : la colonne de droite est occupée par les panneaux. */
-body .lil-gui.autoPlace {
-	left: 16px;
-	right: auto;
-}
-
 .label-layer {
 	position: fixed;
 	inset: 0;
@@ -235,4 +229,122 @@ body .lil-gui.autoPlace {
 .hex-byte.is-highlighted {
 	background: var(--highlight);
 	color: #fff;
+}
+
+.playback-bar {
+	position: fixed;
+	left: 16px;
+	right: calc(var(--sidebar-width) + 16px);
+	bottom: 16px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	border: 1px solid var(--panel-border);
+	border-radius: 10px;
+	background: var(--panel);
+}
+
+.playback-controls,
+.speed-controls {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.playback-button {
+	min-width: 32px;
+	height: 32px;
+	padding: 0 8px;
+	border: 1px solid var(--panel-border);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--text);
+	font: inherit;
+	cursor: pointer;
+}
+
+.playback-button:hover {
+	background: rgba(148, 163, 184, 0.12);
+}
+
+.playback-button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.step-track {
+	flex: 1;
+	display: flex;
+	gap: 4px;
+	min-width: 0;
+}
+
+/* Une case par étape : elle se remplit au rythme de la progression. */
+.step-marker {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 12px;
+	/* Le remplissage (z-index −1) reste derrière le texte, dans la case. */
+	isolation: isolate;
+}
+
+.step-marker-fill {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: rgba(250, 204, 21, 0.25);
+	transform: scaleX(0);
+	transform-origin: left;
+}
+
+.step-marker.is-current {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+.speed-label {
+	min-width: 5ch;
+	text-align: center;
+	font: 12px / 1 var(--monospace);
+}
+
+.help-backdrop {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	background: rgba(2, 6, 23, 0.6);
+}
+
+.help-backdrop[hidden] {
+	display: none;
+}
+
+.help-dialog {
+	min-width: 320px;
+	padding: 16px 20px;
+	border: 1px solid var(--panel-border);
+	border-radius: 10px;
+	background: #0f172a;
+}
+
+.shortcut-list {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 6px 16px;
+	margin: 0;
+}
+
+.shortcut-list dt {
+	font: 12px / 1.6 var(--monospace);
+	color: var(--accent);
+}
+
+.shortcut-list dd {
+	margin: 0;
 }

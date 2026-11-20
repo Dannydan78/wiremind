@@ -1,29 +1,28 @@
-import GUI from "lil-gui";
 import * as THREE from "three";
 import { SSH_HANDSHAKE } from "./concepts/tcp-handshake/scenarios";
 import { layOutMachines } from "./core/layout";
 import { toPacketRows } from "./core/packet-list";
 import { createPacketView } from "./core/packet-view";
+import {
+	actionForKey,
+	applyTimelineCommand,
+	type TimelineCommand,
+} from "./core/playback";
 import { assertValidScenario, findPacket } from "./core/scenario";
 import { createStage } from "./core/scene";
 import { snapshotAt, stepDurationsOf } from "./core/snapshot";
 import {
 	advance,
 	createTimeline,
-	goToStep,
-	pause,
-	play,
 	positionOf,
-	restart,
-	setSpeed,
-	stepBackward,
-	stepForward,
 	type Timeline,
 } from "./core/timeline";
 import { createTopologyView } from "./core/topology-view";
 import { createElement } from "./core/ui/dom";
+import { createHelpOverlay } from "./core/ui/help-overlay";
 import { createInspectorView } from "./core/ui/inspector-view";
 import { createPacketListView } from "./core/ui/packet-list-view";
+import { createPlaybackBar } from "./core/ui/playback-bar";
 import { createStepPanel } from "./core/ui/step-panel";
 
 // Point d'entrée provisoire : charge directement le scénario de validation.
@@ -56,58 +55,37 @@ function selectPacket(packetId: string | null): void {
 	inspectorView.render(packet ?? null);
 }
 
-const playbackControls = {
-	togglePlayback: () => {
-		timeline =
-			timeline.playback === "playing" ? pause(timeline) : play(timeline);
-	},
-	stepBackward: () => {
-		timeline = stepBackward(timeline);
-	},
-	stepForward: () => {
-		timeline = stepForward(timeline);
-	},
-	restart: () => {
-		timeline = restart(timeline);
-	},
-	speed: timeline.speed,
-};
+// Le seul endroit où la timeline change sur une action de l'utilisateur :
+// boutons et clavier passent tous par ici.
+function runCommand(command: TimelineCommand): void {
+	timeline = applyTimelineCommand(timeline, command);
+}
 
-const gui = new GUI({ title: "Lecture" });
-gui.add(playbackControls, "togglePlayback").name("Lecture / pause (espace)");
-gui.add(playbackControls, "stepBackward").name("Étape précédente (←)");
-gui.add(playbackControls, "stepForward").name("Étape suivante (→)");
-gui.add(playbackControls, "restart").name("Recommencer");
-gui
-	.add(playbackControls, "speed", 0.25, 4, 0.25)
-	.name("Vitesse")
-	.onChange((speed: number) => {
-		timeline = setSpeed(timeline, speed);
-	});
-
-const KEY_TO_ACTION: Record<string, () => void> = {
-	Space: playbackControls.togglePlayback,
-	ArrowLeft: playbackControls.stepBackward,
-	ArrowRight: playbackControls.stepForward,
-};
+const helpOverlay = createHelpOverlay(document.body);
+const playbackBar = createPlaybackBar(
+	document.body,
+	scenario.steps,
+	runCommand,
+	helpOverlay.toggle,
+);
 
 window.addEventListener("keydown", (event) => {
-	const action = KEY_TO_ACTION[event.code] ?? goToStepActionFor(event.code);
+	// Laisse passer Cmd+R, Ctrl+C… : ce sont des raccourcis du navigateur.
+	if (event.metaKey || event.ctrlKey || event.altKey) return;
+	const action = actionForKey(event, scenario.steps.length);
 	if (action === undefined) return;
 	event.preventDefault();
-	action();
+	switch (action.kind) {
+		case "toggle-help":
+			helpOverlay.toggle();
+			return;
+		case "close-help":
+			helpOverlay.close();
+			return;
+		default:
+			runCommand(action);
+	}
 });
-
-/** Touches 1 à 9 : aller directement à l'étape correspondante. */
-function goToStepActionFor(code: string): (() => void) | undefined {
-	const digit = /^Digit([1-9])$/.exec(code)?.[1];
-	if (digit === undefined) return undefined;
-	const stepIndex = Number(digit) - 1;
-	if (stepIndex >= scenario.steps.length) return undefined;
-	return () => {
-		timeline = goToStep(timeline, stepIndex);
-	};
-}
 
 // Un glisser de la souris fait tourner la caméra : seul un clic presque
 // immobile sélectionne un paquet.
@@ -140,4 +118,5 @@ stage.start((frameDurationInMs) => {
 	packetView.render(snapshot, selectedPacketId);
 	stepPanel.render(snapshot);
 	packetListView.render(toPacketRows(snapshot), selectedPacketId);
+	playbackBar.render(timeline);
 });
