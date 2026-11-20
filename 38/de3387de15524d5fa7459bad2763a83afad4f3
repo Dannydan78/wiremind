@@ -1,0 +1,43 @@
+src/core/viewport.ts
+  s_7191ab7235bb49::t_a0c0feedaf33ce 1-26
+src/core/scenario-player.ts
+  s_7191ab7235bb49::t_cacad8d147b0af 29,43-47,128-130,132
+src/core/viewport.test.ts
+  s_7191ab7235bb49::t_af1e015c61eb29 1-8,13-18,23-33
+  s_7191ab7235bb49::t_3ac8cf5e414810 9-12,19-22
+src/core/machine-model.ts
+  s_7191ab7235bb49::t_c463b2e9293e9a 121-124
+  s_7191ab7235bb49::t_59957377b027c7 1-120,125-129
+src/core/topology-view.ts
+  s_7191ab7235bb49::t_3162d8ededa995 2-3,9-11,13-14,16-19,26,42-44,58-82,84-96,99-101,120-133
+src/styles.css
+  s_7191ab7235bb49::t_20023e395cad2d 11-16,515-570
+  s_7191ab7235bb49::t_3ac8cf5e414810 33-34,36-48
+  s_7191ab7235bb49::t_53279a35d9f6f4 2-10,59,157,164,217,256,365,398
+src/core/screen-art.ts
+  s_7191ab7235bb49::t_407afc9e62f1e1 1-115
+src/core/palette.ts
+  s_7191ab7235bb49::t_9fc1fefe6a3576 1-20,35
+  s_7191ab7235bb49::t_d2ec10a845ce5a 21-34
+src/core/scene.ts
+  s_7191ab7235bb49::t_c81361f35c2fcd 68-71,73-74,76-80
+  s_7191ab7235bb49::t_59bc6f1bb943eb 20-25,29,35
+  s_7191ab7235bb49::t_c463b2e9293e9a 9,27-28,38-43,45,47-52,54-64,120-126
+  s_7191ab7235bb49::t_0360efe76d51e0 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38de3387de15524d5fa7459bad2763a83afad4f3",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
