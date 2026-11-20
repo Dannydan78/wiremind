@@ -1,29 +1,29 @@
 /**
- * Dessine une topologie : une boîte par machine, une étiquette avec son
- * nom et ses interfaces, une ligne par câble.
+ * Dessine une topologie : un plateau, un modèle 3D par machine avec une
+ * étiquette (nom et interfaces), un câble posé sur le plateau par lien.
  */
 
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import type { GroundPosition } from "./layout";
-import type { Machine, MachineRole, Topology } from "./topology";
+import { createMachineModel, MACHINE_LABEL_HEIGHT } from "./machine-model";
+import { SCENE_COLORS } from "./palette";
+import type { Machine, Topology } from "./topology";
 
-/** Hauteur à laquelle passent les câbles, et donc les paquets. */
-export const CABLE_HEIGHT = 0;
+/** Hauteur à laquelle voyagent les paquets, au-dessus des câbles. */
+export const PACKET_PATH_HEIGHT = 0.4;
 
-const ROLE_COLORS: Record<MachineRole, number> = {
-	host: 0x3b82f6,
-	firewall: 0xf97316,
-	router: 0xa855f7,
-};
-
-const MACHINE_SIZE = { width: 1.2, height: 0.8, depth: 1.2 };
+const CABLE_RADIUS = 0.04;
+/** Marge du plateau autour des machines. */
+const BOARD_MARGIN = 3;
+const BOARD_DEPTH = 6;
 
 export function createTopologyView(
 	topology: Topology,
 	positions: ReadonlyMap<string, GroundPosition>,
 ): THREE.Group {
 	const view = new THREE.Group();
+	view.add(createBoard([...positions.values()]));
 	for (const machine of topology.machines) {
 		view.add(createMachine(machine, positionOf(positions, machine.id)));
 	}
@@ -39,9 +39,9 @@ export function createTopologyView(
 	return view;
 }
 
-/** Point 3D d'une machine, à la hauteur des câbles. */
-export function toCablePoint(position: GroundPosition): THREE.Vector3 {
-	return new THREE.Vector3(position.x, CABLE_HEIGHT, position.z);
+/** Point de passage des paquets au-dessus d'une machine. */
+export function toPacketPathPoint(position: GroundPosition): THREE.Vector3 {
+	return new THREE.Vector3(position.x, PACKET_PATH_HEIGHT, position.z);
 }
 
 export function positionOf(
@@ -55,21 +55,50 @@ export function positionOf(
 	return position;
 }
 
-function createMachine(machine: Machine, position: GroundPosition): THREE.Mesh {
-	const mesh = new THREE.Mesh(
-		new THREE.BoxGeometry(
-			MACHINE_SIZE.width,
-			MACHINE_SIZE.height,
-			MACHINE_SIZE.depth,
-		),
-		new THREE.MeshStandardMaterial({ color: ROLE_COLORS[machine.role] }),
+/** Le plateau et sa grille, à la taille de la topologie. */
+function createBoard(positions: readonly GroundPosition[]): THREE.Group {
+	const xs = positions.map(({ x }) => x);
+	const minX = Math.min(...xs, 0);
+	const maxX = Math.max(...xs, 0);
+	const width = maxX - minX + 2 * BOARD_MARGIN;
+	const centerX = (minX + maxX) / 2;
+
+	const board = new THREE.Group();
+	const plate = new THREE.Mesh(
+		new THREE.BoxGeometry(width, 0.2, BOARD_DEPTH),
+		new THREE.MeshStandardMaterial({
+			color: SCENE_COLORS.board,
+			roughness: 0.9,
+		}),
 	);
-	mesh.position.copy(toCablePoint(position));
+	plate.position.set(centerX, -0.1, 0);
+	board.add(plate);
+
+	const gridSize = Math.max(width, BOARD_DEPTH);
+	const grid = new THREE.GridHelper(
+		gridSize,
+		Math.round(gridSize * 2),
+		SCENE_COLORS.gridMajor,
+		SCENE_COLORS.gridMinor,
+	);
+	grid.position.set(centerX, 0.005, 0);
+	// La grille carrée déborde du plateau en profondeur : on la coupe.
+	grid.scale.z = BOARD_DEPTH / gridSize;
+	board.add(grid);
+	return board;
+}
+
+function createMachine(
+	machine: Machine,
+	position: GroundPosition,
+): THREE.Group {
+	const model = createMachineModel(machine);
+	model.position.set(position.x, 0, position.z);
 
 	const label = new CSS2DObject(createLabelElement(machine));
-	label.position.set(0, MACHINE_SIZE.height, 0);
-	mesh.add(label);
-	return mesh;
+	label.position.set(0, MACHINE_LABEL_HEIGHT, 0);
+	model.add(label);
+	return model;
 }
 
 function createLabelElement(machine: Machine): HTMLElement {
@@ -88,12 +117,19 @@ function createLabelElement(machine: Machine): HTMLElement {
 	return element;
 }
 
-function createCable(from: GroundPosition, to: GroundPosition): THREE.Line {
-	return new THREE.Line(
-		new THREE.BufferGeometry().setFromPoints([
-			toCablePoint(from),
-			toCablePoint(to),
-		]),
-		new THREE.LineBasicMaterial({ color: 0x64748b }),
+/** Un câble posé sur le plateau, d'une machine à l'autre. */
+function createCable(from: GroundPosition, to: GroundPosition): THREE.Mesh {
+	const path = new THREE.LineCurve3(
+		new THREE.Vector3(from.x, CABLE_RADIUS, from.z),
+		new THREE.Vector3(to.x, CABLE_RADIUS, to.z),
+	);
+	return new THREE.Mesh(
+		new THREE.TubeGeometry(path, 1, CABLE_RADIUS, 12, false),
+		new THREE.MeshStandardMaterial({
+			color: SCENE_COLORS.cable,
+			roughness: 0.5,
+			emissive: SCENE_COLORS.cable,
+			emissiveIntensity: 0.25,
+		}),
 	);
 }

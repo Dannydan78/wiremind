@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
+import { SCENE_COLORS } from "./palette";
 
 export type Stage = {
 	readonly scene: THREE.Scene;
@@ -16,42 +17,67 @@ export type Stage = {
 	readonly dispose: () => void;
 };
 
-export function createStage(container: HTMLElement): Stage {
+/**
+ * La scène occupe toute la zone `viewport`, et seulement elle : le rendu,
+ * la caméra et les étiquettes se dimensionnent sur cette zone, pas sur la
+ * fenêtre. Le centre de la caméra tombe ainsi au centre de ce qu'on voit.
+ */
+export function createStage(viewport: HTMLElement): Stage {
 	const renderer = new THREE.WebGLRenderer({ antialias: true });
-	renderer.setPixelRatio(window.devicePixelRatio);
-	renderer.setSize(window.innerWidth, window.innerHeight);
-	container.appendChild(renderer.domElement);
+	// Au-delà de 2, la netteté ne se voit plus mais le coût de rendu, si.
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+	viewport.appendChild(renderer.domElement);
 
 	// Les étiquettes sont du HTML posé au-dessus du canvas : texte net et
 	// sélectionnable, ce qu'un texte 3D ne permet pas.
 	const labelRenderer = new CSS2DRenderer();
-	labelRenderer.setSize(window.innerWidth, window.innerHeight);
 	labelRenderer.domElement.className = "label-layer";
-	container.appendChild(labelRenderer.domElement);
+	viewport.appendChild(labelRenderer.domElement);
 
 	const scene = new THREE.Scene();
-	const camera = new THREE.PerspectiveCamera(
-		50,
-		window.innerWidth / window.innerHeight,
-		0.1,
-		100,
-	);
-	camera.position.set(0, 5, 9);
-	const controls = new OrbitControls(camera, renderer.domElement);
-	controls.enableDamping = true;
+	scene.background = new THREE.Color(SCENE_COLORS.background);
+	// Le brouillard fond les bords du plateau dans le fond : de la profondeur.
+	scene.fog = new THREE.Fog(SCENE_COLORS.background, 14, 32);
 
-	scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-	const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-	sunLight.position.set(3, 6, 4);
+	const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+	camera.position.set(0, 4.5, 8.5);
+	const controls = new OrbitControls(camera, renderer.domElement);
+	controls.target.set(0, 0.7, 0);
+	controls.enableDamping = true;
+	controls.dampingFactor = 0.08;
+	// Ne pas passer sous le plateau, ni trop près ou trop loin.
+	controls.maxPolarAngle = Math.PI * 0.47;
+	controls.minDistance = 4;
+	controls.maxDistance = 22;
+	controls.update();
+
+	// Lumière du ciel bleutée et reflet du sol bleu nuit, comme memory-explorer.
+	// Les intensités sont × π : three.js utilise des unités physiques.
+	scene.add(
+		new THREE.HemisphereLight(
+			0xbfd7ff,
+			SCENE_COLORS.background,
+			0.75 * Math.PI,
+		),
+	);
+	const sunLight = new THREE.DirectionalLight(0xffffff, 0.7 * Math.PI);
+	sunLight.position.set(6, 12, 8);
 	scene.add(sunLight);
 
 	const resize = () => {
-		camera.aspect = window.innerWidth / window.innerHeight;
+		const { clientWidth: width, clientHeight: height } = viewport;
+		// Zone masquée ou pas encore mise en page : rien à dimensionner.
+		if (width === 0 || height === 0) return;
+		camera.aspect = width / height;
 		camera.updateProjectionMatrix();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		labelRenderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.setSize(width, height);
+		labelRenderer.setSize(width, height);
 	};
-	window.addEventListener("resize", resize);
+	resize();
+	// La zone change de taille avec la fenêtre, mais aussi si la colonne
+	// latérale change de largeur : on observe la zone elle-même.
+	const resizeObserver = new ResizeObserver(resize);
+	resizeObserver.observe(viewport);
 
 	return {
 		scene,
@@ -73,7 +99,7 @@ export function createStage(container: HTMLElement): Stage {
 		},
 		dispose: () => {
 			renderer.setAnimationLoop(null);
-			window.removeEventListener("resize", resize);
+			resizeObserver.disconnect();
 			controls.dispose();
 			// renderer.dispose() ne libère pas la mémoire GPU des objets de
 			// la scène : il faut le faire objet par objet.
@@ -91,5 +117,11 @@ function disposeGpuResources(object: THREE.Object3D): void {
 	const materials: THREE.Material[] = Array.isArray(object.material)
 		? object.material
 		: [object.material];
-	for (const material of materials) material.dispose();
+	for (const material of materials) {
+		// material.dispose() ne libère pas ses textures (l'écran des portables).
+		if ("map" in material && material.map instanceof THREE.Texture) {
+			material.map.dispose();
+		}
+		material.dispose();
+	}
 }

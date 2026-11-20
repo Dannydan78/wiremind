@@ -1,11 +1,19 @@
 :root {
-	--background: #0b0f14;
-	--panel: rgba(15, 23, 42, 0.92);
-	--panel-border: #1e293b;
-	--text: #e2e8f0;
-	--text-muted: #94a3b8;
-	--accent: #facc15;
-	--highlight: rgba(250, 204, 21, 0.35);
+	--background: #0f1733;
+	--panel: rgba(14, 21, 46, 0.92);
+	--panel-border: #26315c;
+	--text: #e6e9f5;
+	--text-muted: #8b93b8;
+	--accent: #ffb703;
+	--cyan: #4cc9f0;
+	--selection: rgba(76, 201, 240, 0.22);
+	--highlight: rgba(255, 183, 3, 0.35);
+	/* Une couleur par couche, la même que les enveloppes du paquet en 3D. */
+	--layer-ethernet: #b388ff;
+	--layer-ipv4: #4cc9f0;
+	--layer-tcp: #ffb703;
+	--layer-udp: #5ee6a8;
+	--layer-icmp: #f472b6;
 	--sidebar-width: 480px;
 	--monospace: ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -22,8 +30,22 @@ body {
 		sans-serif;
 }
 
-.label-layer {
+/* La scène occupe la zone à gauche de la colonne latérale, et seulement elle. */
+.viewport {
 	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: var(--sidebar-width);
+	overflow: hidden;
+}
+
+.viewport canvas {
+	display: block;
+}
+
+.label-layer {
+	position: absolute;
 	inset: 0;
 	pointer-events: none;
 }
@@ -34,7 +56,7 @@ body {
 	align-items: center;
 	padding: 4px 8px;
 	border-radius: 6px;
-	background: rgba(15, 23, 42, 0.75);
+	background: rgba(14, 21, 46, 0.8);
 	font: 12px / 1.4 var(--monospace);
 	transform: translateY(-24px);
 }
@@ -132,14 +154,14 @@ body {
 
 /* Une ligne qui vient d'apparaître ou de changer : elle clignote puis reste marquée. */
 .state-table tr.is-changed {
-	background: rgba(250, 204, 21, 0.18);
+	background: rgba(255, 183, 3, 0.18);
 	color: var(--accent);
 	animation: row-changed 1.2s ease-out;
 }
 
 @keyframes row-changed {
 	from {
-		background: rgba(250, 204, 21, 0.55);
+		background: rgba(255, 183, 3, 0.55);
 	}
 }
 
@@ -192,7 +214,7 @@ body {
 }
 
 .packet-entry.is-selected {
-	background: rgba(59, 130, 246, 0.35);
+	background: var(--selection);
 }
 
 .packet-entry.is-selected .packet-info td {
@@ -231,7 +253,7 @@ body {
 }
 
 .field-row.is-selected {
-	background: rgba(59, 130, 246, 0.35);
+	background: var(--selection);
 }
 
 .field-value {
@@ -340,7 +362,7 @@ body {
 	position: absolute;
 	inset: 0;
 	z-index: -1;
-	background: rgba(250, 204, 21, 0.25);
+	background: rgba(255, 183, 3, 0.25);
 	transform: scaleX(0);
 	transform-origin: left;
 }
@@ -373,7 +395,7 @@ body {
 	padding: 16px 20px;
 	border: 1px solid var(--panel-border);
 	border-radius: 10px;
-	background: #0f172a;
+	background: #0e152e;
 }
 
 .shortcut-list {
@@ -489,4 +511,60 @@ a.concept-card:focus-visible {
 .page {
 	display: block;
 	height: 100%;
+}
+
+.packet-badge {
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--text);
+	color: var(--background);
+	font: 700 12px / 1.4 var(--monospace);
+	white-space: nowrap;
+	transform: translateY(-10px);
+}
+
+/* Chaque couche de l'inspecteur porte la couleur de son enveloppe en 3D. */
+.layer {
+	border-left: 3px solid transparent;
+	padding-left: 6px;
+}
+
+.layer-ethernet {
+	border-left-color: var(--layer-ethernet);
+}
+
+.layer-ethernet > .layer-title {
+	color: var(--layer-ethernet);
+}
+
+.layer-ipv4 {
+	border-left-color: var(--layer-ipv4);
+}
+
+.layer-ipv4 > .layer-title {
+	color: var(--layer-ipv4);
+}
+
+.layer-tcp {
+	border-left-color: var(--layer-tcp);
+}
+
+.layer-tcp > .layer-title {
+	color: var(--layer-tcp);
+}
+
+.layer-udp {
+	border-left-color: var(--layer-udp);
+}
+
+.layer-udp > .layer-title {
+	color: var(--layer-udp);
+}
+
+.layer-icmp {
+	border-left-color: var(--layer-icmp);
+}
+
+.layer-icmp > .layer-title {
+	color: var(--layer-icmp);
 }

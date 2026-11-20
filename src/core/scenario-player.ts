@@ -26,6 +26,7 @@ import { createPacketListView } from "./ui/packet-list-view";
 import { createPlaybackBar } from "./ui/playback-bar";
 import { createStepPanel } from "./ui/step-panel";
 import { createTablesView } from "./ui/tables-view";
+import { toNormalizedPointer } from "./viewport";
 
 /** Un glisser fait tourner la caméra : seul un clic presque immobile sélectionne. */
 const MAX_CLICK_DRIFT_IN_PX = 4;
@@ -39,7 +40,11 @@ export function mountScenarioPlayer(
 	const listeners = new AbortController();
 	const { signal } = listeners;
 
-	const stage = createStage(container);
+	// La scène a sa propre zone, à gauche de la colonne latérale : elle est
+	// centrée dans ce qu'on voit au lieu de passer sous les panneaux.
+	const viewport = createElement("div", "viewport");
+	container.appendChild(viewport);
+	const stage = createStage(viewport);
 	const positions = layOutMachines(scenario.topology);
 	stage.scene.add(createTopologyView(scenario.topology, positions));
 	const packetView = createPacketView(positions);
@@ -120,10 +125,11 @@ export function mountScenarioPlayer(
 			pointerDownAt = null;
 			if (drift > MAX_CLICK_DRIFT_IN_PX) return;
 
-			const pointer = new THREE.Vector2(
-				(event.clientX / window.innerWidth) * 2 - 1,
-				-(event.clientY / window.innerHeight) * 2 + 1,
+			const { x, y } = toNormalizedPointer(
+				event,
+				stage.canvas.getBoundingClientRect(),
 			);
+			const pointer = new THREE.Vector2(x, y);
 			selectPacket(packetView.findPacketAt(pointer, stage.camera)?.id ?? null);
 		},
 		{ signal },
