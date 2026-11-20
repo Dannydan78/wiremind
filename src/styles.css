@@ -106,6 +106,49 @@ body {
 	margin: 0;
 }
 
+.tables {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.state-table {
+	width: 100%;
+	border-collapse: collapse;
+	font: 12px / 1.4 var(--monospace);
+}
+
+.state-table th {
+	text-align: left;
+	color: var(--text-muted);
+	font-weight: 500;
+	padding: 2px 6px;
+}
+
+.state-table td {
+	padding: 3px 6px;
+	white-space: nowrap;
+}
+
+/* Une ligne qui vient d'apparaître ou de changer : elle clignote puis reste marquée. */
+.state-table tr.is-changed {
+	background: rgba(250, 204, 21, 0.18);
+	color: var(--accent);
+	animation: row-changed 1.2s ease-out;
+}
+
+@keyframes row-changed {
+	from {
+		background: rgba(250, 204, 21, 0.55);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.state-table tr.is-changed {
+		animation: none;
+	}
+}
+
 .packet-table {
 	width: 100%;
 	border-collapse: collapse;

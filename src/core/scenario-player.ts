@@ -25,6 +25,7 @@ import { createInspectorView } from "./ui/inspector-view";
 import { createPacketListView } from "./ui/packet-list-view";
 import { createPlaybackBar } from "./ui/playback-bar";
 import { createStepPanel } from "./ui/step-panel";
+import { createTablesView } from "./ui/tables-view";
 
 /** Un glisser fait tourner la caméra : seul un clic presque immobile sélectionne. */
 const MAX_CLICK_DRIFT_IN_PX = 4;
@@ -47,6 +48,7 @@ export function mountScenarioPlayer(
 	const sidebar = createElement("aside", "sidebar");
 	container.appendChild(sidebar);
 	const stepPanel = createStepPanel(sidebar, scenario);
+	const tablesView = createTablesView(sidebar);
 	const packetListView = createPacketListView(sidebar, (packetId) =>
 		selectPacket(packetId),
 	);
@@ -132,6 +134,7 @@ export function mountScenarioPlayer(
 		const snapshot = snapshotAt(scenario, positionOf(timeline));
 		packetView.render(snapshot, selectedPacketId);
 		stepPanel.render(snapshot);
+		tablesView.render(snapshot.stepIndex, snapshot.tables);
 		packetListView.render(toPacketRows(snapshot), selectedPacketId);
 		playbackBar.render(timeline);
 	});
