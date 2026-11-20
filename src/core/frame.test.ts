@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { encodeFrame, type Frame, type FrameLayer } from "./frame";
+import { encodeFrame, type Frame, type FrameLayer, findFieldAt } from "./frame";
 import type { Packet, TcpSegment } from "./packet";
 
 /**
@@ -83,6 +83,32 @@ describe("encodeFrame", () => {
 		expect(fieldBytes(frame, "tcp", "Sequence number")).toBe("2573381a");
 		expect(fieldBytes(frame, "ipv4", "Time to live")).toBe("40");
 		expect(fieldBytes(frame, "ethernet", "Source")).toBe("3a4d3d2332f8");
+	});
+
+	test("retrouve le champ auquel appartient un octet", () => {
+		const frame = encodeFrame(KALI_SSH_SYN);
+
+		// Octets 36 et 37 : le port destination TCP (14 + 20 + 2).
+		expect(findFieldAt(frame, 36)?.name).toBe("Destination port");
+		expect(findFieldAt(frame, 37)?.name).toBe("Destination port");
+		expect(findFieldAt(frame, frame.bytes.length)).toBeUndefined();
+	});
+
+	test("donne la valeur lisible de chaque champ, comme Wireshark", () => {
+		const valuesByName = new Map(
+			encodeFrame(KALI_SSH_SYN).fields.map((field) => [
+				`${field.layer}/${field.name}`,
+				field.value,
+			]),
+		);
+
+		expect(valuesByName.get("ethernet/Type")).toBe("IPv4 (0x0800)");
+		expect(valuesByName.get("ipv4/Protocol")).toBe("TCP (6)");
+		expect(valuesByName.get("ipv4/Header checksum")).toBe("0x35d6");
+		expect(valuesByName.get("tcp/Header length / Flags")).toBe(
+			"40 octets / SYN",
+		);
+		expect(valuesByName.get("tcp/Option: Window scale")).toBe("9 (× 512)");
 	});
 
 	test("un routeur qui décrémente le TTL doit recalculer la somme de contrôle IP", () => {

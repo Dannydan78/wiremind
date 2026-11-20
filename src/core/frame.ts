@@ -1,21 +1,22 @@
 /**
  * Encode un paquet en octets, tels qu'ils passent sur le câble, en gardant
- * la position de chaque champ pour l'inspecteur.
+ * pour chaque champ sa position et sa valeur lisible, pour l'inspecteur.
  *
  * Les champs dérivables (EtherType, longueurs, protocole, sommes de
  * contrôle) sont calculés ici à partir des couches du paquet.
  */
 
-import type {
-	EthernetHeader,
-	IcmpMessage,
-	Ipv4Header,
-	Packet,
-	TcpFlag,
-	TcpOption,
-	TcpSegment,
-	TransportLayer,
-	UdpDatagram,
+import {
+	type EthernetHeader,
+	formatTcpFlags,
+	type IcmpMessage,
+	type Ipv4Header,
+	type Packet,
+	type TcpFlag,
+	type TcpOption,
+	type TcpSegment,
+	type TransportLayer,
+	type UdpDatagram,
 } from "./packet";
 
 export type FrameLayer =
@@ -31,6 +32,8 @@ export type FrameField = {
 	readonly layer: FrameLayer;
 	/** Nom du champ, tel que Wireshark l'affiche. */
 	readonly name: string;
+	/** Valeur décodée, lisible : « 22 », « IPv4 (0x0800) », « SYN, ACK »… */
+	readonly value: string;
 	readonly offset: number;
 	readonly length: number;
 };
@@ -50,10 +53,21 @@ export function encodeFrame(packet: Packet): Frame {
 	]);
 }
 
-/** Un champ avant placement : ses octets, sans position. */
+/** Le champ qui contient l'octet situé à `offset` dans la trame. */
+export function findFieldAt(
+	frame: Frame,
+	offset: number,
+): FrameField | undefined {
+	return frame.fields.find(
+		(field) => offset >= field.offset && offset < field.offset + field.length,
+	);
+}
+
+/** Un champ avant placement : ses octets et sa valeur, sans position. */
 type EncodedField = {
 	readonly layer: FrameLayer;
 	readonly name: string;
+	readonly value: string;
 	readonly bytes: readonly number[];
 };
 
@@ -85,10 +99,21 @@ function encodeEthernet(ethernet: EthernetHeader): EncodedField[] {
 		{
 			layer: "ethernet",
 			name: "Destination",
+			value: ethernet.destinationMac,
 			bytes: parseMac(ethernet.destinationMac),
 		},
-		{ layer: "ethernet", name: "Source", bytes: parseMac(ethernet.sourceMac) },
-		{ layer: "ethernet", name: "Type", bytes: toUint(ETHERTYPE_IPV4, 2) },
+		{
+			layer: "ethernet",
+			name: "Source",
+			value: ethernet.sourceMac,
+			bytes: parseMac(ethernet.sourceMac),
+		},
+		{
+			layer: "ethernet",
+			name: "Type",
+			value: `IPv4 (${toHexLiteral(ETHERTYPE_IPV4, 2)})`,
+			bytes: toUint(ETHERTYPE_IPV4, 2),
+		},
 	];
 }
 
@@ -100,27 +125,33 @@ function encodeIpv4(
 	assertFitsInBits(ipv4.dscp, 6, "DSCP");
 	assertFitsInBits(ipv4.ecn, 2, "ECN");
 	const headerLengthInWords = IPV4_HEADER_LENGTH_IN_BYTES / 4;
+	const totalLengthInBytes = IPV4_HEADER_LENGTH_IN_BYTES + segmentLengthInBytes;
 	const dontFragmentBit = ipv4.dontFragment ? 0x4000 : 0;
+	const protocolNumber = IP_PROTOCOL_NUMBERS[transport.protocol];
 
 	const fields: EncodedField[] = [
 		{
 			layer: "ipv4",
 			name: "Version / Header length",
+			value: `${IPV4_VERSION} / ${IPV4_HEADER_LENGTH_IN_BYTES} octets`,
 			bytes: toUint(IPV4_VERSION * 16 + headerLengthInWords, 1),
 		},
 		{
 			layer: "ipv4",
 			name: "DSCP / ECN",
+			value: `${ipv4.dscp} / ${ipv4.ecn}`,
 			bytes: toUint(ipv4.dscp * 4 + ipv4.ecn, 1),
 		},
 		{
 			layer: "ipv4",
 			name: "Total length",
-			bytes: toUint(IPV4_HEADER_LENGTH_IN_BYTES + segmentLengthInBytes, 2),
+			value: `${totalLengthInBytes} octets`,
+			bytes: toUint(totalLengthInBytes, 2),
 		},
 		{
 			layer: "ipv4",
 			name: "Identification",
+			value: `${ipv4.identification} (${toHexLiteral(ipv4.identification, 2)})`,
 			bytes: toUint(ipv4.identification, 2),
 		},
 		// Le décalage de fragment vaut toujours 0 : la fragmentation
@@ -128,23 +159,32 @@ function encodeIpv4(
 		{
 			layer: "ipv4",
 			name: "Flags / Fragment offset",
+			value: ipv4.dontFragment ? "Don't fragment / 0" : "aucun / 0",
 			bytes: toUint(dontFragmentBit, 2),
 		},
-		{ layer: "ipv4", name: "Time to live", bytes: toUint(ipv4.ttl, 1) },
+		{
+			layer: "ipv4",
+			name: "Time to live",
+			value: `${ipv4.ttl}`,
+			bytes: toUint(ipv4.ttl, 1),
+		},
 		{
 			layer: "ipv4",
 			name: "Protocol",
-			bytes: toUint(IP_PROTOCOL_NUMBERS[transport.protocol], 1),
+			value: `${transport.protocol.toUpperCase()} (${protocolNumber})`,
+			bytes: toUint(protocolNumber, 1),
 		},
-		{ layer: "ipv4", name: IP_CHECKSUM_FIELD, bytes: [0, 0] },
+		{ layer: "ipv4", name: IP_CHECKSUM_FIELD, value: "", bytes: [0, 0] },
 		{
 			layer: "ipv4",
 			name: "Source address",
+			value: ipv4.sourceAddress,
 			bytes: parseIpv4(ipv4.sourceAddress),
 		},
 		{
 			layer: "ipv4",
 			name: "Destination address",
+			value: ipv4.destinationAddress,
 			bytes: parseIpv4(ipv4.destinationAddress),
 		},
 	];
@@ -208,8 +248,9 @@ function encodeTcp(tcp: TcpSegment): EncodedField[] {
 			`TCP options take ${optionsLengthInBytes} bytes, not a multiple of 4`,
 		);
 	}
-	const headerLengthInWords =
-		(TCP_HEADER_LENGTH_WITHOUT_OPTIONS_IN_BYTES + optionsLengthInBytes) / 4;
+	const headerLengthInBytes =
+		TCP_HEADER_LENGTH_WITHOUT_OPTIONS_IN_BYTES + optionsLengthInBytes;
+	const headerLengthInWords = headerLengthInBytes / 4;
 	assertFitsInBits(headerLengthInWords, 4, "TCP header length");
 	const flagBits = tcp.flags.reduce(
 		(bits, flag) => bits | TCP_FLAG_BITS[flag],
@@ -217,31 +258,45 @@ function encodeTcp(tcp: TcpSegment): EncodedField[] {
 	);
 
 	return [
-		{ layer: "tcp", name: "Source port", bytes: toUint(tcp.sourcePort, 2) },
+		{
+			layer: "tcp",
+			name: "Source port",
+			value: `${tcp.sourcePort}`,
+			bytes: toUint(tcp.sourcePort, 2),
+		},
 		{
 			layer: "tcp",
 			name: "Destination port",
+			value: `${tcp.destinationPort}`,
 			bytes: toUint(tcp.destinationPort, 2),
 		},
 		{
 			layer: "tcp",
 			name: "Sequence number",
+			value: `${tcp.sequenceNumber}`,
 			bytes: toUint(tcp.sequenceNumber, 4),
 		},
 		{
 			layer: "tcp",
 			name: "Acknowledgment number",
+			value: `${tcp.acknowledgmentNumber}`,
 			bytes: toUint(tcp.acknowledgmentNumber, 4),
 		},
 		{
 			layer: "tcp",
 			name: "Header length / Flags",
+			value: `${headerLengthInBytes} octets / ${formatTcpFlags(tcp.flags)}`,
 			bytes: toUint(headerLengthInWords * 4096 + flagBits, 2),
 		},
-		{ layer: "tcp", name: "Window", bytes: toUint(tcp.windowSize, 2) },
-		{ layer: "tcp", name: TRANSPORT_CHECKSUM_FIELD, bytes: [0, 0] },
+		{
+			layer: "tcp",
+			name: "Window",
+			value: `${tcp.windowSize}`,
+			bytes: toUint(tcp.windowSize, 2),
+		},
+		{ layer: "tcp", name: TRANSPORT_CHECKSUM_FIELD, value: "", bytes: [0, 0] },
 		// Le pointeur urgent vaut 0 : le flag URG n'est jamais utilisé en pratique.
-		{ layer: "tcp", name: "Urgent pointer", bytes: [0, 0] },
+		{ layer: "tcp", name: "Urgent pointer", value: "0", bytes: [0, 0] },
 		...optionFields,
 	];
 }
@@ -252,14 +307,21 @@ function encodeTcpOption(option: TcpOption): EncodedField {
 			return {
 				layer: "tcp",
 				name: "Option: Maximum segment size",
+				value: `${option.maxSegmentSizeInBytes} octets`,
 				bytes: [2, 4, ...toUint(option.maxSegmentSizeInBytes, 2)],
 			};
 		case "sack-permitted":
-			return { layer: "tcp", name: "Option: SACK permitted", bytes: [4, 2] };
+			return {
+				layer: "tcp",
+				name: "Option: SACK permitted",
+				value: "oui",
+				bytes: [4, 2],
+			};
 		case "timestamps":
 			return {
 				layer: "tcp",
 				name: "Option: Timestamps",
+				value: `val ${option.value}, ecr ${option.echoReply}`,
 				bytes: [
 					8,
 					10,
@@ -268,11 +330,17 @@ function encodeTcpOption(option: TcpOption): EncodedField {
 				],
 			};
 		case "nop":
-			return { layer: "tcp", name: "Option: No-Operation", bytes: [1] };
+			return {
+				layer: "tcp",
+				name: "Option: No-Operation",
+				value: "bourrage",
+				bytes: [1],
+			};
 		case "window-scale":
 			return {
 				layer: "tcp",
 				name: "Option: Window scale",
+				value: `${option.shift} (× ${2 ** option.shift})`,
 				bytes: [3, 3, ...toUint(option.shift, 1)],
 			};
 		default: {
@@ -286,28 +354,51 @@ function encodeUdp(
 	udp: UdpDatagram,
 	payloadSizeInBytes: number,
 ): EncodedField[] {
+	const lengthInBytes = UDP_HEADER_LENGTH_IN_BYTES + payloadSizeInBytes;
 	return [
-		{ layer: "udp", name: "Source port", bytes: toUint(udp.sourcePort, 2) },
+		{
+			layer: "udp",
+			name: "Source port",
+			value: `${udp.sourcePort}`,
+			bytes: toUint(udp.sourcePort, 2),
+		},
 		{
 			layer: "udp",
 			name: "Destination port",
+			value: `${udp.destinationPort}`,
 			bytes: toUint(udp.destinationPort, 2),
 		},
 		{
 			layer: "udp",
 			name: "Length",
-			bytes: toUint(UDP_HEADER_LENGTH_IN_BYTES + payloadSizeInBytes, 2),
+			value: `${lengthInBytes} octets`,
+			bytes: toUint(lengthInBytes, 2),
 		},
-		{ layer: "udp", name: TRANSPORT_CHECKSUM_FIELD, bytes: [0, 0] },
+		{ layer: "udp", name: TRANSPORT_CHECKSUM_FIELD, value: "", bytes: [0, 0] },
 	];
 }
 
 function encodeIcmp(icmp: IcmpMessage): EncodedField[] {
 	return [
-		{ layer: "icmp", name: "Type", bytes: toUint(icmp.type, 1) },
-		{ layer: "icmp", name: "Code", bytes: toUint(icmp.code, 1) },
-		{ layer: "icmp", name: TRANSPORT_CHECKSUM_FIELD, bytes: [0, 0] },
-		{ layer: "icmp", name: "Rest of header", bytes: [0, 0, 0, 0] },
+		{
+			layer: "icmp",
+			name: "Type",
+			value: `${icmp.type}`,
+			bytes: toUint(icmp.type, 1),
+		},
+		{
+			layer: "icmp",
+			name: "Code",
+			value: `${icmp.code}`,
+			bytes: toUint(icmp.code, 1),
+		},
+		{ layer: "icmp", name: TRANSPORT_CHECKSUM_FIELD, value: "", bytes: [0, 0] },
+		{
+			layer: "icmp",
+			name: "Rest of header",
+			value: "non modélisé",
+			bytes: [0, 0, 0, 0],
+		},
 	];
 }
 
@@ -317,6 +408,7 @@ function encodePayload(payloadSizeInBytes: number): EncodedField[] {
 		{
 			layer: "payload",
 			name: "Payload",
+			value: `${payloadSizeInBytes} octets (contenu non modélisé)`,
 			bytes: new Array<number>(payloadSizeInBytes).fill(0),
 		},
 	];
@@ -340,7 +432,7 @@ function buildPseudoHeader(
  * Somme de contrôle d'Internet (RFC 1071) : somme des mots de 16 bits en
  * complément à un, puis inversion des bits.
  */
-function computeInternetChecksum(bytes: readonly number[]): number[] {
+function computeInternetChecksum(bytes: readonly number[]): number {
 	let sum = 0;
 	for (let i = 0; i < bytes.length; i += 2) {
 		sum += (bytes[i] ?? 0) * 256 + (bytes[i + 1] ?? 0);
@@ -348,24 +440,30 @@ function computeInternetChecksum(bytes: readonly number[]): number[] {
 	while (sum > 0xffff) {
 		sum = (sum % 0x10000) + Math.floor(sum / 0x10000);
 	}
-	return toUint(0xffff - sum, 2);
+	return 0xffff - sum;
 }
 
 function withChecksum(
 	fields: readonly EncodedField[],
 	checksumFieldName: string,
-	checksum: readonly number[],
+	checksum: number,
 ): EncodedField[] {
 	return fields.map((field) =>
-		field.name === checksumFieldName ? { ...field, bytes: checksum } : field,
+		field.name === checksumFieldName
+			? {
+					...field,
+					value: toHexLiteral(checksum, 2),
+					bytes: toUint(checksum, 2),
+				}
+			: field,
 	);
 }
 
 function layOut(encodedFields: readonly EncodedField[]): Frame {
 	const fields: FrameField[] = [];
 	let offset = 0;
-	for (const { layer, name, bytes } of encodedFields) {
-		fields.push({ layer, name, offset, length: bytes.length });
+	for (const { layer, name, value, bytes } of encodedFields) {
+		fields.push({ layer, name, value, offset, length: bytes.length });
 		offset += bytes.length;
 	}
 	return { bytes: Uint8Array.from(bytesOf(encodedFields)), fields };
@@ -386,6 +484,11 @@ function toUint(value: number, sizeInBytes: number): number[] {
 		{ length: sizeInBytes },
 		(_, index) => Math.floor(value / 256 ** (sizeInBytes - 1 - index)) % 256,
 	);
+}
+
+/** « 0x0800 » : un entier écrit en hexadécimal sur `sizeInBytes` octets. */
+function toHexLiteral(value: number, sizeInBytes: number): string {
+	return `0x${value.toString(16).padStart(sizeInBytes * 2, "0")}`;
 }
 
 function assertFitsInBits(value: number, bitCount: number, label: string) {

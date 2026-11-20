@@ -111,7 +111,11 @@ export function summarizePacket(packet: Packet): string {
 	}
 }
 
-/** L'ordre dans lequel Wireshark affiche les flags : [SYN, ACK], [FIN, ACK]… */
+/** Les flags levés, dans l'ordre de Wireshark : « SYN, ACK », « FIN, ACK »… */
+export function formatTcpFlags(flags: readonly TcpFlag[]): string {
+	return WIRESHARK_FLAG_ORDER.filter((flag) => flags.includes(flag)).join(", ");
+}
+
 const WIRESHARK_FLAG_ORDER: readonly TcpFlag[] = [
 	"FIN",
 	"SYN",
@@ -129,13 +133,12 @@ const ICMP_TYPE_NAMES: Partial<Record<number, string>> = {
 };
 
 function summarizeTcp(tcp: TcpSegment, payloadSizeInBytes: number): string {
-	const flags = WIRESHARK_FLAG_ORDER.filter((flag) => tcp.flags.includes(flag));
 	// Le numéro d'acquittement n'a de sens que si le flag ACK est levé.
 	const acknowledgment = tcp.flags.includes("ACK")
 		? ` Ack=${tcp.acknowledgmentNumber}`
 		: "";
 	return (
-		`${tcp.sourcePort} → ${tcp.destinationPort} [${flags.join(", ")}]` +
+		`${tcp.sourcePort} → ${tcp.destinationPort} [${formatTcpFlags(tcp.flags)}]` +
 		` Seq=${tcp.sequenceNumber}${acknowledgment}` +
 		` Win=${tcp.windowSize} Len=${payloadSizeInBytes}`
 	);
