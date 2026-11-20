@@ -1,0 +1,24 @@
+src/core/scenario.test.ts
+  s_7191ab7235bb49::t_f854de685e56c4 338-350
+  s_7191ab7235bb49::t_524d7d3c740633 110,115
+src/core/snapshot.test.ts
+  s_7191ab7235bb49::t_f854de685e56c4 44-45
+src/core/scenario.ts
+  s_7191ab7235bb49::t_524d7d3c740633 81-87,93,98-99,151-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77caf7eaefbe480e305b68a6fd2e8204171ad008",
+  "prompts": {},
+  "sessions": {
+    "s_7191ab7235bb49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d504d968-28a6-4e73-bfed-2babaa2b7435",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Darragon Konki <danny.darragon.konki@pairprog.io>"
+    }
+  }
+}
