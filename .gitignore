@@ -33,6 +33,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
+# captures réseau : peuvent contenir clés, noms d'hôte ou identifiants
+*.pcap
+*.pcapng
+
 # CLAUDE
 CLAUDE.md
 .claude/
