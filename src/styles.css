@@ -572,22 +572,10 @@ a.concept-card:focus-visible {
 
 .connection-label {
 	padding: 3px 10px;
-	border: 1px solid currentColor;
+	border: 1px solid var(--green);
 	border-radius: 999px;
 	background: rgba(14, 21, 46, 0.85);
+	color: var(--green);
 	font: 600 12px / 1.4 var(--monospace);
 	white-space: nowrap;
-	transform: translateY(-16px);
-}
-
-.connection-label.is-opening {
-	color: var(--accent);
-}
-
-.connection-label.is-established {
-	color: var(--green);
-}
-
-.connection-label.is-closed {
-	color: var(--text-muted);
 }
