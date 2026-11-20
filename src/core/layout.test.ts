@@ -3,7 +3,7 @@ import { layOutMachines, MACHINE_SPACING } from "./layout";
 import type { Machine, Topology } from "./topology";
 
 function machine(id: string): Machine {
-	return { id, label: id, role: "host", interfaces: [] };
+	return { id, label: id, role: "host", os: "other", interfaces: [] };
 }
 
 function topologyOf(...machineIds: string[]): Topology {

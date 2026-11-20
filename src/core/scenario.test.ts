@@ -19,6 +19,7 @@ const SAME_SEGMENT: Topology = {
 			id: "kali",
 			label: "Kali",
 			role: "host",
+			os: "kali-linux",
 			interfaces: [
 				{
 					name: "eth0",
@@ -32,6 +33,7 @@ const SAME_SEGMENT: Topology = {
 			id: "target",
 			label: "Cible",
 			role: "host",
+			os: "ubuntu",
 			interfaces: [
 				{
 					name: "eth0",

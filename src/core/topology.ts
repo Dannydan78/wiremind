@@ -6,6 +6,9 @@
 /** Rôle d'une machine : décide de sa forme dans la scène, pas de sa logique. */
 export type MachineRole = "host" | "firewall" | "router";
 
+/** Le système installé : décide de ce qu'affiche son écran dans la scène. */
+export type OperatingSystem = "kali-linux" | "ubuntu" | "opnsense" | "other";
+
 export type NetworkInterface = {
 	/** Nom tel qu'il apparaît dans le labo : "eth0", "wan", "lan"… */
 	readonly name: string;
@@ -19,6 +22,7 @@ export type Machine = {
 	readonly id: string;
 	readonly label: string;
 	readonly role: MachineRole;
+	readonly os: OperatingSystem;
 	readonly interfaces: readonly NetworkInterface[];
 };
 
