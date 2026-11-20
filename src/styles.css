@@ -348,3 +348,102 @@ body {
 .shortcut-list dd {
 	margin: 0;
 }
+
+.concept-menu {
+	box-sizing: border-box;
+	height: 100%;
+	overflow-y: auto;
+	max-width: 960px;
+	margin: 0 auto;
+	padding: 48px 16px;
+}
+
+.menu-title {
+	margin: 0;
+	font-size: 32px;
+}
+
+.menu-subtitle {
+	margin: 8px 0 32px;
+	max-width: 60ch;
+	color: var(--text-muted);
+}
+
+.concept-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.concept-card {
+	display: block;
+	height: 100%;
+	box-sizing: border-box;
+	padding: 16px;
+	border: 1px solid var(--panel-border);
+	border-radius: 10px;
+	background: var(--panel);
+	color: inherit;
+	text-decoration: none;
+}
+
+a.concept-card:hover,
+a.concept-card:focus-visible {
+	border-color: var(--accent);
+	outline: none;
+}
+
+.concept-card.is-planned {
+	opacity: 0.55;
+}
+
+.concept-title {
+	margin: 0 0 6px;
+	font-size: 16px;
+}
+
+.concept-summary {
+	margin: 0;
+	color: var(--text-muted);
+}
+
+.concept-badge {
+	display: inline-block;
+	margin-top: 10px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: rgba(148, 163, 184, 0.15);
+	font-size: 12px;
+}
+
+.back-link {
+	position: fixed;
+	top: 16px;
+	left: 16px;
+	padding: 6px 12px;
+	border: 1px solid var(--panel-border);
+	border-radius: 6px;
+	background: var(--panel);
+	color: var(--text);
+	text-decoration: none;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+	border-color: var(--accent);
+	outline: none;
+}
+
+.load-error {
+	padding: 64px 16px;
+	text-align: center;
+	color: #fca5a5;
+}
+
+.page {
+	display: block;
+	height: 100%;
+}
