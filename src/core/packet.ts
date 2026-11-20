@@ -91,6 +91,26 @@ export type Packet = {
 	readonly payloadSizeInBytes: number;
 };
 
+/**
+ * L'essentiel en quelques caractères, affiché au-dessus du paquet dans la
+ * scène : les flags pour TCP, le port de destination pour UDP.
+ */
+export function packetBadgeOf(packet: Packet): string {
+	const { transport } = packet;
+	switch (transport.protocol) {
+		case "tcp":
+			return `[${formatTcpFlags(transport.flags)}]`;
+		case "udp":
+			return `UDP → ${transport.destinationPort}`;
+		case "icmp":
+			return summarizePacket(packet);
+		default: {
+			const unhandled: never = transport;
+			throw new Error(`Unhandled transport: ${JSON.stringify(unhandled)}`);
+		}
+	}
+}
+
 /** Résumé d'une ligne, comme la colonne « Info » de Wireshark. */
 export function summarizePacket(packet: Packet): string {
 	const { transport, payloadSizeInBytes } = packet;

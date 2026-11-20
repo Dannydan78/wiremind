@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { type Packet, summarizePacket, type TransportLayer } from "./packet";
+import {
+	type Packet,
+	packetBadgeOf,
+	summarizePacket,
+	type TransportLayer,
+} from "./packet";
 
 function packetCarrying(
 	transport: TransportLayer,
@@ -75,5 +80,38 @@ describe("summarizePacket", () => {
 
 		expect(summarizePacket(ping)).toBe("Echo (ping) request");
 		expect(summarizePacket(unknown)).toBe("Type=42 Code=1");
+	});
+});
+
+describe("packetBadgeOf", () => {
+	test("un segment TCP se résume à ses flags", () => {
+		const synAck = packetCarrying({
+			protocol: "tcp",
+			sourcePort: 22,
+			destinationPort: 33534,
+			sequenceNumber: 1,
+			acknowledgmentNumber: 2,
+			flags: ["ACK", "SYN"],
+			windowSize: 65160,
+			options: [],
+		});
+
+		expect(packetBadgeOf(synAck)).toBe("[SYN, ACK]");
+	});
+
+	test("un datagramme UDP se résume à son port de destination", () => {
+		const query = packetCarrying({
+			protocol: "udp",
+			sourcePort: 40000,
+			destinationPort: 53,
+		});
+
+		expect(packetBadgeOf(query)).toBe("UDP → 53");
+	});
+
+	test("un message ICMP se résume à son nom", () => {
+		const ping = packetCarrying({ protocol: "icmp", type: 8, code: 0 });
+
+		expect(packetBadgeOf(ping)).toBe("Echo (ping) request");
 	});
 });
